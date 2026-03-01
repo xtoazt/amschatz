@@ -67,26 +67,29 @@ export function useChat() {
       config: { presence: { key: username } },
     });
 
+    // Incoming text/image/gif messages
     channel.on('broadcast', { event: 'message' }, (payload) => {
       const msg = payload.payload as ChatMessage;
       if (msg.username === usernameRef.current) return;
       setState(prev => ({ ...prev, messages: [...prev.messages, { ...msg, status: 'delivered' }] }));
 
-      // Auto-mark as read if tab focused
       if (!document.hidden && channelRef.current) {
         channelRef.current.send({ type: 'broadcast', event: 'read', payload: { messageId: msg.id, reader: usernameRef.current } });
       }
 
       if (notificationsRef.current && document.hidden) {
-        new Notification(msg.username, { body: msg.text });
+        const body = msg.type === 'image' ? '[Image]' : msg.type === 'gif' ? '[GIF]' : msg.text;
+        new Notification(msg.username, { body });
       }
     });
 
+    // System messages
     channel.on('broadcast', { event: 'system' }, (payload) => {
       const msg = payload.payload as ChatMessage;
       setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
     });
 
+    // Typing indicators
     channel.on('broadcast', { event: 'typing' }, (payload) => {
       const { username: typingUser } = payload.payload as { username: string };
       if (typingUser === usernameRef.current) return;
@@ -103,6 +106,7 @@ export function useChat() {
       }, 3000);
     });
 
+    // Read receipts
     channel.on('broadcast', { event: 'read' }, (payload) => {
       const { messageId } = payload.payload as { messageId: string; reader: string };
       setState(prev => ({
@@ -111,7 +115,40 @@ export function useChat() {
       }));
     });
 
-    // Nuke event
+    // Edit event: update the text of a specific message for all clients
+    channel.on('broadcast', { event: 'edit' }, (payload) => {
+      const { messageId, newText } = payload.payload as { messageId: string; newText: string };
+      setState(prev => ({
+        ...prev,
+        messages: prev.messages.map(m =>
+          m.id === messageId ? { ...m, text: newText, edited: true } : m
+        ),
+      }));
+    });
+
+    // Unsend event: replace message content with a tombstone for all clients
+    channel.on('broadcast', { event: 'unsend' }, (payload) => {
+      const { messageId } = payload.payload as { messageId: string };
+      setState(prev => ({
+        ...prev,
+        messages: prev.messages.map(m =>
+          m.id === messageId
+            ? {
+                ...m,
+                text: '',
+                imageDataUrl: undefined,
+                imageMimeType: undefined,
+                gifUrl: undefined,
+                gifPreviewUrl: undefined,
+                gifTitle: undefined,
+                unsent: true,
+              }
+            : m
+        ),
+      }));
+    });
+
+    // Nuke / purge event
     channel.on('broadcast', { event: 'nuke' }, () => {
       setState(prev => ({
         ...prev,
@@ -133,7 +170,6 @@ export function useChat() {
       }));
       setState(prev => ({ ...prev, users }));
 
-      // Auto-purge: if no users left, clear messages
       if (users.length === 0) {
         setState(prev => ({ ...prev, messages: [] }));
       }
@@ -174,24 +210,9 @@ export function useChat() {
     }));
   }, []);
 
+  /** Send a plain text message */
   const sendMessage = useCallback((text: string) => {
     if (!text.trim()) return;
-
-    // Secret nuke trigger
-    if (text.trim().toLowerCase() === 'dingus' && channelRef.current) {
-      channelRef.current.send({ type: 'broadcast', event: 'nuke', payload: {} });
-      setState(prev => ({
-        ...prev,
-        messages: [{
-          id: generateId(),
-          username: 'system',
-          text: 'Session purged.',
-          timestamp: Date.now(),
-          type: 'system',
-        }],
-      }));
-      return;
-    }
 
     const msg: ChatMessage = {
       id: generateId(),
@@ -207,6 +228,114 @@ export function useChat() {
     if (channelRef.current) {
       channelRef.current.send({ type: 'broadcast', event: 'message', payload: msg });
     }
+  }, []);
+
+  /** Send an image (base64 data URL) */
+  const sendImage = useCallback((dataUrl: string, mimeType: string) => {
+    const msg: ChatMessage = {
+      id: generateId(),
+      username: usernameRef.current,
+      text: '',
+      imageDataUrl: dataUrl,
+      imageMimeType: mimeType,
+      timestamp: Date.now(),
+      type: 'image',
+      status: 'sent',
+    };
+
+    setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
+
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'message', payload: msg });
+    }
+  }, []);
+
+  /** Send a GIF (klipy item) */
+  const sendGif = useCallback((gifUrl: string, gifPreviewUrl: string, gifTitle: string) => {
+    const msg: ChatMessage = {
+      id: generateId(),
+      username: usernameRef.current,
+      text: '',
+      gifUrl,
+      gifPreviewUrl,
+      gifTitle,
+      timestamp: Date.now(),
+      type: 'gif',
+      status: 'sent',
+    };
+
+    setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
+
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'message', payload: msg });
+    }
+  }, []);
+
+  /** Edit own text message (also updates local state immediately) */
+  const editMessage = useCallback((messageId: string, newText: string) => {
+    const trimmed = newText.trim();
+    if (!trimmed) return;
+
+    setState(prev => ({
+      ...prev,
+      messages: prev.messages.map(m =>
+        m.id === messageId ? { ...m, text: trimmed, edited: true } : m
+      ),
+    }));
+
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'edit',
+        payload: { messageId, newText: trimmed },
+      });
+    }
+  }, []);
+
+  /** Unsend own message (tombstone it for all clients) */
+  const unsendMessage = useCallback((messageId: string) => {
+    setState(prev => ({
+      ...prev,
+      messages: prev.messages.map(m =>
+        m.id === messageId
+          ? {
+              ...m,
+              text: '',
+              imageDataUrl: undefined,
+              imageMimeType: undefined,
+              gifUrl: undefined,
+              gifPreviewUrl: undefined,
+              gifTitle: undefined,
+              unsent: true,
+            }
+          : m
+      ),
+    }));
+
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'unsend',
+        payload: { messageId },
+      });
+    }
+  }, []);
+
+  /** Purge the entire session (broadcast nuke to all clients) */
+  const purgeSession = useCallback(() => {
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'nuke', payload: {} });
+    }
+    setState(prev => ({
+      ...prev,
+      messages: [{
+        id: generateId(),
+        username: 'system',
+        text: 'Session purged.',
+        timestamp: Date.now(),
+        type: 'system',
+      }],
+    }));
   }, []);
 
   const sendTyping = useCallback(() => {
@@ -243,5 +372,18 @@ export function useChat() {
     }
   }, [state.notificationsEnabled]);
 
-  return { state, joinRoom, leaveRoom, sendMessage, sendTyping, exportHistory, toggleNotifications };
+  return {
+    state,
+    joinRoom,
+    leaveRoom,
+    sendMessage,
+    sendImage,
+    sendGif,
+    editMessage,
+    unsendMessage,
+    purgeSession,
+    sendTyping,
+    exportHistory,
+    toggleNotifications,
+  };
 }
