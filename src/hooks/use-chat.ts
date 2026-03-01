@@ -204,12 +204,6 @@ export function useChat() {
       }
     });
 
-    // Handle channel errors for immediate disconnect detection
-    channel.onError((err) => {
-      console.log("[v0] Channel error; marking users as potentially offline", err);
-      // Users will be resynced when connection restores
-    });
-
     channelRef.current = channel;
   }, []);
 
