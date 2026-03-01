@@ -1,9 +1,8 @@
 import { execSync } from 'child_process';
-import { resolve } from 'path';
 
-const root = resolve(import.meta.dirname, '..');
+const root = '/vercel/share/v0-project';
 
-console.log('[v0] Regenerating package-lock.json with npm install...');
+console.log('[v0] Regenerating package-lock.json in:', root);
 execSync('npm install --package-lock-only', {
   cwd: root,
   stdio: 'inherit',
