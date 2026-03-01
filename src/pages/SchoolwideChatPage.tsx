@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useChat } from '@/hooks/use-chat';
 import { ChatArea } from '@/components/ChatArea';
@@ -9,22 +9,29 @@ const SCHOOLWIDE_ROOM_CODE = 'ams';
 
 export default function SchoolwideChatPage() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const state = location.state as { username?: string } | null;
   const [hasJoined, setHasJoined] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
 
   const chat = useChat();
 
-  // Auto-join the schoolwide chat room with the username from state
+  // Get username from sessionStorage (set by SchoolwideChatButton)
   useEffect(() => {
-    if (state?.username && !hasJoined) {
-      chat.joinRoom(state.username, SCHOOLWIDE_ROOM_CODE);
-      setHasJoined(true);
-    } else if (!state?.username && !hasJoined) {
-      // No username provided; redirect back to join screen
+    const storedUsername = sessionStorage.getItem('schoolwide_chat_username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    } else {
+      // No username; redirect back to join screen
       navigate('/');
     }
-  }, [state, hasJoined, chat, navigate]);
+  }, [navigate]);
+
+  // Auto-join the schoolwide chat room once username is available
+  useEffect(() => {
+    if (username && !hasJoined) {
+      chat.joinRoom(username, SCHOOLWIDE_ROOM_CODE);
+      setHasJoined(true);
+    }
+  }, [username, hasJoined, chat]);
 
   const handleLeave = () => {
     chat.leaveRoom();

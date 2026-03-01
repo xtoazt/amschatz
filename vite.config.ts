@@ -24,17 +24,25 @@ export default defineConfig(({ mode }) => {
           return;
         }
         
-        const path = req.url.replace(/^\/klipy/, '');
-        const url = `https://api.klipy.com/api/v1/${apiKey}${path}`;
+        const reqPath = req.url.replace(/^\/klipy/, '');
+        const url = `https://api.klipy.com/api/v1/${apiKey}${reqPath}`;
         
-        fetch(url).then((apiRes: any) => {
-          res.statusCode = apiRes.status;
-          apiRes.headers.forEach((v: string, k: string) => res.setHeader(k, v));
-          apiRes.body.pipe(res);
-        }).catch((err: Error) => {
-          res.statusCode = 500;
-          res.end(err.message);
-        });
+        fetch(url)
+          .then(async (apiRes) => {
+            res.statusCode = apiRes.status;
+            apiRes.headers.forEach((v, k) => {
+              // Skip headers that shouldn't be forwarded
+              if (!['content-encoding', 'transfer-encoding'].includes(k.toLowerCase())) {
+                res.setHeader(k, v);
+              }
+            });
+            const buffer = await apiRes.arrayBuffer();
+            res.end(Buffer.from(buffer));
+          })
+          .catch((err: any) => {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          });
       },
     ],
   },

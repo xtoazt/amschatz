@@ -9,7 +9,9 @@ export function SchoolwideChatButton({ username }: SchoolwideChatButtonProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate('/schoolwide-chat', { state: { username } });
+    // Store username in sessionStorage so SchoolwideChatPage can retrieve it
+    sessionStorage.setItem('schoolwide_chat_username', username);
+    navigate('/schoolwide-chat');
   };
 
   return (
