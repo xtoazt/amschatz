@@ -4,7 +4,20 @@ import { ChatSidebar } from '@/components/ChatSidebar';
 import { ChatArea } from '@/components/ChatArea';
 
 const Index = () => {
-  const { state, joinRoom, leaveRoom, sendMessage, sendTyping, exportHistory, toggleNotifications } = useChat();
+  const {
+    state,
+    joinRoom,
+    leaveRoom,
+    sendMessage,
+    sendImage,
+    sendGif,
+    editMessage,
+    unsendMessage,
+    purgeSession,
+    sendTyping,
+    exportHistory,
+    toggleNotifications,
+  } = useChat();
 
   if (!state.isJoined) {
     return <JoinScreen onJoin={joinRoom} />;
@@ -24,10 +37,15 @@ const Index = () => {
         notificationsEnabled={state.notificationsEnabled}
         typingUsers={state.typingUsers}
         onSend={sendMessage}
+        onSendImage={sendImage}
+        onSendGif={sendGif}
+        onEdit={editMessage}
+        onUnsend={unsendMessage}
         onTyping={sendTyping}
         onExport={exportHistory}
         onToggleNotifications={toggleNotifications}
         onLeave={leaveRoom}
+        onPurge={purgeSession}
       />
     </div>
   );
