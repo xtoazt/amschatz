@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ChatMessage } from '@/types/chat';
+import { SchoolwideChatButton } from './SchoolwideChatButton';
 
 interface JoinScreenProps {
   onJoin: (username: string, roomCode: string, importedMessages?: ChatMessage[]) => void;
@@ -58,6 +59,16 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
           Join
           <ArrowRight className="w-4 h-4" />
         </button>
+
+        <div className="relative flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {username.trim() && (
+          <SchoolwideChatButton username={username.trim()} />
+        )}
       </form>
     </div>
   );

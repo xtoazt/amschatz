@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChatMessage, RoomUser, ChatState } from '@/types/chat';
 import { supabase } from '@/integrations/supabase/client';
+import { PresenceManager } from '@/lib/presence';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const generateId = () => Math.random().toString(36).substring(2, 12);
@@ -22,6 +23,7 @@ export function useChat() {
   });
 
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const presenceManagerRef = useRef<PresenceManager | null>(null);
   const notificationsRef = useRef(state.notificationsEnabled);
   const usernameRef = useRef(state.username);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,6 +34,9 @@ export function useChat() {
 
   useEffect(() => {
     return () => {
+      if (presenceManagerRef.current) {
+        presenceManagerRef.current.cleanup();
+      }
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
       }
@@ -41,6 +46,12 @@ export function useChat() {
   const joinRoom = useCallback((username: string, roomCode: string, importedMessages?: ChatMessage[]) => {
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
+    }
+
+    // Cleanup old presence manager
+    if (presenceManagerRef.current) {
+      presenceManagerRef.current.cleanup();
+      presenceManagerRef.current = null;
     }
 
     const systemMsg: ChatMessage = {
@@ -179,7 +190,24 @@ export function useChat() {
       if (status === 'SUBSCRIBED') {
         await channel.track({ username, joinedAt: Date.now() });
         channel.send({ type: 'broadcast', event: 'system', payload: systemMsg });
+
+        // Initialize presence manager for fast offline detection
+        const presenceManager = new PresenceManager();
+        presenceManager.initPresence(channel, username, (leavingUser) => {
+          // Immediately remove user from state when they leave
+          setState(prev => ({
+            ...prev,
+            users: prev.users.filter(u => u.username !== leavingUser),
+          }));
+        });
+        presenceManagerRef.current = presenceManager;
       }
+    });
+
+    // Handle channel errors for immediate disconnect detection
+    channel.onError((err) => {
+      console.log("[v0] Channel error; marking users as potentially offline", err);
+      // Users will be resynced when connection restores
     });
 
     channelRef.current = channel;
