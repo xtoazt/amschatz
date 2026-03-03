@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bell, BellOff, LogOut, Plus, Image, Smile } from 'lucide-react';
+import { Send, Bell, BellOff, LogOut, Plus } from 'lucide-react';
 import { ChatMessage } from '@/types/chat';
-import { Role, RolePoll, PermissionKey } from '@/types/role';
 import { Progress } from '@/components/ui/progress';
 import {
   ContextMenu,
@@ -9,10 +8,6 @@ import {
   ContextMenuContent,
   ContextMenuItem,
 } from '@/components/ui/context-menu';
-import { PollMessage } from '@/components/PollMessage';
-import { UserRoleBadges } from '@/components/RoleBadge';
-import { GifPicker } from '@/components/GifPicker';
-import { StickerPicker } from '@/components/StickerPicker';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
@@ -22,10 +17,6 @@ interface ChatAreaProps {
   typingUsers: string[];
   frozen: boolean;
   frozenBy: string | null;
-  polls: RolePoll[];
-  roles: Role[];
-  userCount: number;
-  getUserRoles: (username: string) => Role[];
   onSend: (text: string) => void;
   onTyping: () => void;
   onToggleNotifications: () => void;
@@ -33,8 +24,6 @@ interface ChatAreaProps {
   onEdit: (messageId: string, newText: string) => void;
   onUnsend: (messageId: string) => void;
   onSendImage: (file: File, onProgress?: (p: number) => void) => void;
-  onVotePoll: (pollId: string, approve: boolean) => void;
-  onOpenRolePanel: () => void;
 }
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
@@ -52,10 +41,6 @@ export function ChatArea({
   typingUsers,
   frozen,
   frozenBy,
-  polls,
-  roles,
-  userCount,
-  getUserRoles,
   onSend,
   onTyping,
   onToggleNotifications,
@@ -63,8 +48,6 @@ export function ChatArea({
   onEdit,
   onUnsend,
   onSendImage,
-  onVotePoll,
-  onOpenRolePanel,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -72,8 +55,6 @@ export function ChatArea({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [gifPickerOpen, setGifPickerOpen] = useState(false);
-  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
@@ -85,12 +66,6 @@ export function ChatArea({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      // Check for /role command
-      if (input.trim().toLowerCase() === '/role') {
-        onOpenRolePanel();
-        setInput('');
-        return;
-      }
       onSend(input);
       setInput('');
     }
@@ -217,23 +192,6 @@ export function ChatArea({
             );
           }
 
-          // Poll message type
-          if (msg.type === 'poll' && msg.pollId) {
-            const poll = polls.find(p => p.id === msg.pollId);
-            if (poll) {
-              return (
-                <div key={msg.id} className={`flex ${msg.username === currentUser ? 'justify-end' : 'justify-start'}`}>
-                  <PollMessage
-                    poll={poll}
-                    currentUser={currentUser}
-                    totalUsers={userCount}
-                    onVote={onVotePoll}
-                  />
-                </div>
-              );
-            }
-          }
-
           if (msg.deleted) {
             return (
               <div key={msg.id} className={`flex ${msg.username === currentUser ? 'justify-end' : 'justify-start'}`}>
@@ -244,15 +202,11 @@ export function ChatArea({
 
           const isOwn = msg.username === currentUser;
           const imageExpired = isImageExpired(msg.imageExpiry);
-          const userRoles = getUserRoles(msg.username);
 
           const bubble = (
             <div className="max-w-[75%] space-y-0.5">
               {!isOwn && (
-                <div className="flex items-center gap-1.5 ml-1">
-                  <span className="text-[11px] text-muted-foreground">{msg.username}</span>
-                  <UserRoleBadges roles={userRoles} size="xs" />
-                </div>
+                <span className="text-[11px] text-muted-foreground ml-1">{msg.username}</span>
               )}
               {editingId === msg.id ? (
                 <div className="flex gap-1">
@@ -348,28 +302,6 @@ export function ChatArea({
         }}
       />
 
-      {/* GIF Picker */}
-      <GifPicker
-        open={gifPickerOpen}
-        onClose={() => setGifPickerOpen(false)}
-        onSelect={(gifUrl, previewUrl) => {
-          // Send GIF as a message
-          onSend(`[GIF](${gifUrl})`);
-          setGifPickerOpen(false);
-        }}
-      />
-
-      {/* Sticker Picker */}
-      <StickerPicker
-        open={stickerPickerOpen}
-        onClose={() => setStickerPickerOpen(false)}
-        onSelect={(stickerUrl) => {
-          // Send sticker as a message
-          onSend(`[STICKER](${stickerUrl})`);
-          setStickerPickerOpen(false);
-        }}
-      />
-
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-3 shrink-0">
         <div className="flex gap-2 items-center">
@@ -380,24 +312,6 @@ export function ChatArea({
             className="p-2.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setGifPickerOpen(true)}
-            disabled={isInputDisabled}
-            className="p-2.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-            title="Send GIF"
-          >
-            <Image className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setStickerPickerOpen(true)}
-            disabled={isInputDisabled}
-            className="p-2.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-            title="Send Sticker"
-          >
-            <Smile className="w-4 h-4" />
           </button>
           <input
             type="text"

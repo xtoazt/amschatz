@@ -1,21 +1,13 @@
-import { Users, LogOut, Shield, ChevronDown, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { Users, LogOut } from 'lucide-react';
 import { RoomUser } from '@/types/chat';
-import { Role, ROLE_COLORS } from '@/types/role';
-import { UserRoleBadges, RoleBadge } from '@/components/RoleBadge';
 
 interface ChatSidebarProps {
   roomCode: string;
   users: RoomUser[];
-  roles: Role[];
-  getUserRoles: (username: string) => Role[];
   onLeave: () => void;
 }
 
-export function ChatSidebar({ roomCode, users, roles, getUserRoles, onLeave }: ChatSidebarProps) {
-  const [showRoles, setShowRoles] = useState(true);
-  const [showUsers, setShowUsers] = useState(true);
-
+export function ChatSidebar({ roomCode, users, onLeave }: ChatSidebarProps) {
   return (
     <div className="w-56 h-full bg-card flex flex-col shrink-0 hidden md:flex">
       <div className="p-4">
@@ -23,71 +15,18 @@ export function ChatSidebar({ roomCode, users, roles, getUserRoles, onLeave }: C
         <p className="text-sm font-medium text-foreground truncate mt-0.5">{roomCode}</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {/* Roles Section */}
-        {roles.length > 0 && (
-          <div className="px-4 pb-2">
-            <button
-              onClick={() => setShowRoles(!showRoles)}
-              className="flex items-center gap-1.5 w-full"
-            >
-              {showRoles ? (
-                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-              )}
-              <Shield className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Roles — {roles.length}</span>
-            </button>
-            {showRoles && (
-              <div className="mt-2 space-y-1 pl-5">
-                {roles.map((role) => (
-                  <div key={role.id} className="flex items-center gap-2">
-                    <RoleBadge role={role} size="xs" />
-                    <span className="text-[10px] text-muted-foreground">
-                      {users.filter(u => getUserRoles(u.username).some(r => r.id === role.id)).length}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Users Section */}
-        <div className="px-4 py-2">
-          <button
-            onClick={() => setShowUsers(!showUsers)}
-            className="flex items-center gap-1.5 w-full"
-          >
-            {showUsers ? (
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            )}
-            <Users className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Online — {users.length}</span>
-          </button>
-          {showUsers && (
-            <div className="mt-2 space-y-1.5 pl-5">
-              {users.map((u) => {
-                const userRoles = getUserRoles(u.username);
-                return (
-                  <div key={u.username} className="px-2 py-1 rounded">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-online shrink-0" />
-                      <span className="text-sm text-foreground truncate">{u.username}</span>
-                    </div>
-                    {userRoles.length > 0 && (
-                      <div className="ml-3.5 mt-0.5">
-                        <UserRoleBadges roles={userRoles} size="xs" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+      <div className="flex-1 p-4 overflow-y-auto scrollbar-thin">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Users className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Online — {users.length}</span>
+        </div>
+        <div className="space-y-1.5">
+          {users.map((u) => (
+            <div key={u.username} className="flex items-center gap-2 px-2 py-1 rounded">
+              <div className="w-1.5 h-1.5 rounded-full bg-online" />
+              <span className="text-sm text-foreground truncate">{u.username}</span>
             </div>
-          )}
+          ))}
         </div>
       </div>
 
