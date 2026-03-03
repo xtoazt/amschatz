@@ -18,6 +18,8 @@ export function useChat() {
       isJoined: false,
       notificationsEnabled: savedNotif,
       typingUsers: [],
+      frozen: false,
+      frozenBy: null,
     };
   });
 
@@ -38,7 +40,7 @@ export function useChat() {
     };
   }, []);
 
-  const joinRoom = useCallback((username: string, roomCode: string, importedMessages?: ChatMessage[]) => {
+  const joinRoom = useCallback((username: string, roomCode: string) => {
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
     }
@@ -51,16 +53,16 @@ export function useChat() {
       type: 'system',
     };
 
-    const initialMessages = importedMessages ? [...importedMessages, systemMsg] : [systemMsg];
-
     setState(prev => ({
       ...prev,
       username,
       roomCode,
       isJoined: true,
-      messages: initialMessages,
+      messages: [systemMsg],
       users: [],
       typingUsers: [],
+      frozen: false,
+      frozenBy: null,
     }));
 
     const channel = supabase.channel(`room:${roomCode}`, {
@@ -72,7 +74,6 @@ export function useChat() {
       if (msg.username === usernameRef.current) return;
       setState(prev => ({ ...prev, messages: [...prev.messages, { ...msg, status: 'delivered' }] }));
 
-      // Auto-mark as read if tab focused
       if (!document.hidden && channelRef.current) {
         channelRef.current.send({ type: 'broadcast', event: 'read', payload: { messageId: msg.id, reader: usernameRef.current } });
       }
@@ -83,6 +84,11 @@ export function useChat() {
     });
 
     channel.on('broadcast', { event: 'system' }, (payload) => {
+      const msg = payload.payload as ChatMessage;
+      setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
+    });
+
+    channel.on('broadcast', { event: 'announcement' }, (payload) => {
       const msg = payload.payload as ChatMessage;
       setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
     });
@@ -111,7 +117,6 @@ export function useChat() {
       }));
     });
 
-    // Nuke event
     channel.on('broadcast', { event: 'nuke' }, () => {
       setState(prev => ({
         ...prev,
@@ -125,6 +130,27 @@ export function useChat() {
       }));
     });
 
+    channel.on('broadcast', { event: 'freeze' }, (payload) => {
+      const { frozen, by } = payload.payload as { frozen: boolean; by: string };
+      setState(prev => ({ ...prev, frozen, frozenBy: frozen ? by : null }));
+    });
+
+    channel.on('broadcast', { event: 'edit' }, (payload) => {
+      const { messageId, newText } = payload.payload as { messageId: string; newText: string };
+      setState(prev => ({
+        ...prev,
+        messages: prev.messages.map(m => m.id === messageId ? { ...m, text: newText, edited: true } : m),
+      }));
+    });
+
+    channel.on('broadcast', { event: 'unsend' }, (payload) => {
+      const { messageId } = payload.payload as { messageId: string };
+      setState(prev => ({
+        ...prev,
+        messages: prev.messages.map(m => m.id === messageId ? { ...m, text: '', deleted: true } : m),
+      }));
+    });
+
     channel.on('presence', { event: 'sync' }, () => {
       const presenceState = channel.presenceState();
       const users: RoomUser[] = Object.keys(presenceState).map(key => ({
@@ -133,7 +159,6 @@ export function useChat() {
       }));
       setState(prev => ({ ...prev, users }));
 
-      // Auto-purge: if no users left, clear messages
       if (users.length === 0) {
         setState(prev => ({ ...prev, messages: [] }));
       }
@@ -171,6 +196,8 @@ export function useChat() {
       username: '',
       roomCode: '',
       typingUsers: [],
+      frozen: false,
+      frozenBy: null,
     }));
   }, []);
 
@@ -243,5 +270,68 @@ export function useChat() {
     }
   }, [state.notificationsEnabled]);
 
-  return { state, joinRoom, leaveRoom, sendMessage, sendTyping, exportHistory, toggleNotifications };
+  const nukeRoom = useCallback(() => {
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'nuke', payload: {} });
+    }
+    setState(prev => ({
+      ...prev,
+      messages: [{
+        id: generateId(),
+        username: 'system',
+        text: 'Session purged.',
+        timestamp: Date.now(),
+        type: 'system',
+      }],
+    }));
+  }, []);
+
+  const freezeChat = useCallback(() => {
+    setState(prev => {
+      const newFrozen = !prev.frozen;
+      if (channelRef.current) {
+        channelRef.current.send({ type: 'broadcast', event: 'freeze', payload: { frozen: newFrozen, by: usernameRef.current } });
+      }
+      return { ...prev, frozen: newFrozen, frozenBy: newFrozen ? usernameRef.current : null };
+    });
+  }, []);
+
+  const sendAnnouncement = useCallback((text: string) => {
+    const msg: ChatMessage = {
+      id: generateId(),
+      username: 'system',
+      text,
+      timestamp: Date.now(),
+      type: 'announcement',
+    };
+    setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'announcement', payload: msg });
+    }
+  }, []);
+
+  const editMessage = useCallback((messageId: string, newText: string) => {
+    setState(prev => ({
+      ...prev,
+      messages: prev.messages.map(m => m.id === messageId ? { ...m, text: newText, edited: true } : m),
+    }));
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'edit', payload: { messageId, newText } });
+    }
+  }, []);
+
+  const unsendMessage = useCallback((messageId: string) => {
+    setState(prev => ({
+      ...prev,
+      messages: prev.messages.map(m => m.id === messageId ? { ...m, text: '', deleted: true } : m),
+    }));
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'unsend', payload: { messageId } });
+    }
+  }, []);
+
+  return {
+    state, joinRoom, leaveRoom, sendMessage, sendTyping, exportHistory,
+    toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage,
+  };
 }

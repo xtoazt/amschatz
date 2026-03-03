@@ -3,8 +3,10 @@ export interface ChatMessage {
   username: string;
   text: string;
   timestamp: number;
-  type: 'message' | 'system';
+  type: 'message' | 'system' | 'announcement';
   status?: 'sent' | 'delivered' | 'read';
+  edited?: boolean;
+  deleted?: boolean;
 }
 
 export interface RoomUser {
@@ -20,4 +22,6 @@ export interface ChatState {
   isJoined: boolean;
   notificationsEnabled: boolean;
   typingUsers: string[];
+  frozen: boolean;
+  frozenBy: string | null;
 }
