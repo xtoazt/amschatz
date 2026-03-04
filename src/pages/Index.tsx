@@ -4,18 +4,22 @@ import { JoinScreen } from '@/components/JoinScreen';
 import { ChatSidebar } from '@/components/ChatSidebar';
 import { ChatArea } from '@/components/ChatArea';
 import { AdminPanel } from '@/components/AdminPanel';
+import { AdminAuthOverlay } from '@/components/AdminAuthOverlay';
 
 const Index = () => {
   const {
     state, joinRoom, leaveRoom, sendMessage, sendTyping,
-    toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
+    toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage, sendGif,
   } = useChat();
   const [adminOpen, setAdminOpen] = useState(false);
+  const [authOverlay, setAuthOverlay] = useState(false);
 
   const handleSend = (text: string) => {
     if (text.trim() === '/admin') {
-      if (state.isRoomCreator) {
+      if (sessionStorage.getItem('is_admin') === 'true') {
         setAdminOpen(true);
+      } else {
+        setAuthOverlay(true);
       }
       return;
     }
@@ -48,7 +52,14 @@ const Index = () => {
         onEdit={editMessage}
         onUnsend={unsendMessage}
         onSendImage={sendImage}
+        onSendGif={sendGif}
       />
+      {authOverlay && (
+        <AdminAuthOverlay
+          onSuccess={() => { setAuthOverlay(false); setAdminOpen(true); }}
+          onCancel={() => setAuthOverlay(false)}
+        />
+      )}
       {adminOpen && (
         <AdminPanel
           messages={state.messages}

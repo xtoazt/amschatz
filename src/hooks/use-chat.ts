@@ -51,7 +51,6 @@ export function useChat() {
       typingUsers: [],
       frozen: false,
       frozenBy: null,
-      isRoomCreator: false,
     };
   });
 
@@ -95,7 +94,6 @@ export function useChat() {
       typingUsers: [],
       frozen: false,
       frozenBy: null,
-      isRoomCreator: true,
     }));
 
     const channel = supabase.channel(`room:${roomCode}`, {
@@ -240,7 +238,6 @@ export function useChat() {
       typingUsers: [],
       frozen: false,
       frozenBy: null,
-      isRoomCreator: false,
     }));
   }, []);
 
@@ -271,16 +268,25 @@ export function useChat() {
     typingTimeoutRef.current = setTimeout(() => { typingTimeoutRef.current = null; }, 2000);
   }, []);
 
-  const exportHistory = useCallback(() => {
-    const data = JSON.stringify(state.messages, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'chat_export.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [state.messages]);
+  const sendGif = useCallback((gifUrl: string) => {
+    const TWELVE_H = 12 * 60 * 60 * 1000;
+    const msg: ChatMessage = {
+      id: generateId(),
+      username: usernameRef.current,
+      text: '',
+      timestamp: Date.now(),
+      type: 'message',
+      status: 'sent',
+      imageUrl: gifUrl,
+      imageExpiry: Date.now() + TWELVE_H,
+    };
+
+    setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
+
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'message', payload: msg });
+    }
+  }, []);
 
   const toggleNotifications = useCallback(async () => {
     if (!state.notificationsEnabled) {
@@ -402,7 +408,7 @@ export function useChat() {
   }, []);
 
   return {
-    state, joinRoom, leaveRoom, sendMessage, sendTyping, exportHistory,
+    state, joinRoom, leaveRoom, sendMessage, sendTyping, sendGif,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
   };
 }

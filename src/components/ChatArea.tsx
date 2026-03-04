@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bell, BellOff, LogOut, Plus } from 'lucide-react';
+import { GifPicker } from '@/components/GifPicker';
 import { ChatMessage } from '@/types/chat';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -24,6 +25,7 @@ interface ChatAreaProps {
   onEdit: (messageId: string, newText: string) => void;
   onUnsend: (messageId: string) => void;
   onSendImage: (file: File, onProgress?: (p: number) => void) => void;
+  onSendGif: (url: string) => void;
 }
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
@@ -48,6 +50,7 @@ export function ChatArea({
   onEdit,
   onUnsend,
   onSendImage,
+  onSendGif,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -304,7 +307,7 @@ export function ChatArea({
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-3 shrink-0">
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-1 items-center">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -313,6 +316,7 @@ export function ChatArea({
           >
             <Plus className="w-4 h-4" />
           </button>
+          <GifPicker onSelect={onSendGif} disabled={isInputDisabled} />
           <input
             type="text"
             value={input}

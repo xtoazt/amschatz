@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { ArrowRight, Shuffle, ShieldAlert } from 'lucide-react';
-import { ChatMessage } from '@/types/chat';
 
 interface JoinScreenProps {
-  onJoin: (username: string, roomCode: string, importedMessages?: ChatMessage[]) => void;
+  onJoin: (username: string, roomCode: string) => void;
 }
 
 function generateSecureRoomCode(): string {
