@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     }
 
     const searchLimit = Math.min(Math.max(limit || 20, 8), 50);
-    const url = `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(q)}&limit=${searchLimit}&rating=pg`;
+    const url = `https://gifproxy.vercel.app/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(q)}&limit=${searchLimit}&rating=pg`;
 
     const response = await fetch(url);
     const data = await response.json();
