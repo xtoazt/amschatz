@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useChat } from '@/hooks/use-chat';
+import { useScreenshotDetect } from '@/hooks/use-screenshot-detect';
 import { JoinScreen } from '@/components/JoinScreen';
 import { ChatSidebar } from '@/components/ChatSidebar';
 import { ChatArea } from '@/components/ChatArea';
@@ -10,10 +11,12 @@ const Index = () => {
   const {
     state, joinRoom, leaveRoom, sendMessage, sendTyping,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage, sendGif,
-    checkUsernameAvailable,
+    checkUsernameAvailable, broadcastScreenshot,
   } = useChat();
   const [adminOpen, setAdminOpen] = useState(false);
   const [authOverlay, setAuthOverlay] = useState(false);
+
+  useScreenshotDetect(broadcastScreenshot, state.isJoined);
 
   const handleSend = (text: string) => {
     if (text.trim() === '/admin') {

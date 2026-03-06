@@ -11,38 +11,13 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Authenticate the caller
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const anonClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
-
-  const { data, error: claimsError } = await anonClient.auth.getClaims(
-    authHeader.replace("Bearer ", "")
-  );
-  if (claimsError || !data?.claims) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // Proceed with service role for storage operations
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+  // 10-minute burn window
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
   const { data: files, error: listError } = await supabase.storage
     .from("chat-images")
@@ -56,7 +31,7 @@ Deno.serve(async (req) => {
   }
 
   const expired = (files || []).filter(
-    (f) => f.created_at && new Date(f.created_at) < new Date(twelveHoursAgo)
+    (f) => f.created_at && new Date(f.created_at) < new Date(tenMinutesAgo)
   );
 
   if (expired.length > 0) {
@@ -65,7 +40,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ purged: expired.length }),
+    JSON.stringify({ purged: expired.length, window: "10min" }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });

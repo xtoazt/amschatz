@@ -184,7 +184,7 @@ export function ChatArea({
           if (msg.type === 'system') {
             return (
               <div key={msg.id} className="flex justify-center py-1">
-                <span className="text-[11px] text-muted-foreground">{msg.text}</span>
+                <span className="text-[11px] text-muted-foreground font-mono">{msg.text}</span>
               </div>
             );
           }

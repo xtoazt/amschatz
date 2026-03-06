@@ -5,7 +5,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { z } from 'zod';
 
 const generateId = () => Math.random().toString(36).substring(2, 12);
-const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+const TEN_MINUTES = 10 * 60 * 1000;
 
 const ChatMessageSchema = z.object({
   id: z.string().max(50),
@@ -26,6 +26,7 @@ const BulkReadSchema = z.object({ messageIds: z.array(z.string().max(50)), reade
 const FreezeSchema = z.object({ frozen: z.boolean(), by: z.string().max(20) });
 const EditSchema = z.object({ messageId: z.string().max(50), newText: z.string().max(5000) });
 const UnsendSchema = z.object({ messageId: z.string().max(50) });
+const ScreenshotSchema = z.object({ username: z.string().max(20) });
 
 function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
   const result = schema.safeParse(data);
@@ -267,6 +268,19 @@ export function useChat() {
       }));
     });
 
+    channel.on('broadcast', { event: 'screenshot' }, (payload) => {
+      const parsed = safeParse(ScreenshotSchema, payload.payload);
+      if (!parsed || parsed.username === usernameRef.current) return;
+      const alertMsg: ChatMessage = {
+        id: generateId(),
+        username: 'system',
+        text: `⚠ ${parsed.username} took a screenshot`,
+        timestamp: Date.now(),
+        type: 'system',
+      };
+      setState(prev => ({ ...prev, messages: [...prev.messages, alertMsg] }));
+    });
+
     channel.on('presence', { event: 'sync' }, () => {
       const presenceState = channel.presenceState();
       const users: RoomUser[] = Object.keys(presenceState).map(key => ({
@@ -345,7 +359,6 @@ export function useChat() {
   }, []);
 
   const sendGif = useCallback((gifUrl: string) => {
-    const TWELVE_H = 12 * 60 * 60 * 1000;
     const msg: ChatMessage = {
       id: generateId(),
       username: usernameRef.current,
@@ -354,7 +367,7 @@ export function useChat() {
       type: 'message',
       status: 'sent',
       imageUrl: gifUrl,
-      imageExpiry: Date.now() + TWELVE_H,
+      imageExpiry: Date.now() + TEN_MINUTES,
     };
 
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
@@ -442,7 +455,7 @@ export function useChat() {
   const sendImage = useCallback(async (file: File, onProgress?: (p: number) => void) => {
     const ext = file.name.split('.').pop() || 'png';
     const fileName = `${generateId()}_${Date.now()}.${ext}`;
-    const expiry = Date.now() + TWELVE_HOURS;
+    const expiry = Date.now() + TEN_MINUTES;
 
     onProgress?.(10);
 
@@ -483,9 +496,26 @@ export function useChat() {
     onProgress?.(100);
   }, []);
 
+  const broadcastScreenshot = useCallback(() => {
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'screenshot', payload: { username: usernameRef.current } });
+    }
+    // Also show locally
+    setState(prev => ({
+      ...prev,
+      messages: [...prev.messages, {
+        id: generateId(),
+        username: 'system',
+        text: '⚠ You took a screenshot — others have been notified',
+        timestamp: Date.now(),
+        type: 'system',
+      }],
+    }));
+  }, []);
+
   return {
     state, joinRoom, leaveRoom, sendMessage, sendTyping, sendGif,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
-    checkUsernameAvailable,
+    checkUsernameAvailable, broadcastScreenshot,
   };
 }
