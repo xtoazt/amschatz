@@ -25,38 +25,44 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get('KLIPY_API_KEY');
     if (!apiKey) {
+      console.error('KLIPY_API_KEY not configured');
       return new Response(JSON.stringify({ error: 'Not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const searchLimit = Math.min(Math.max(limit || 24, 8), 50);
-    const url = `https://api.klipy.co/v1/gifs/search?q=${encodeURIComponent(q)}&limit=${searchLimit}`;
+    const perPage = Math.min(Math.max(limit || 24, 8), 50);
+    const url = `https://api.klipy.com/api/v1/${apiKey}/gifs/search?q=${encodeURIComponent(q)}&per_page=${perPage}&customer_id=v0id_anon&page=1`;
 
-    const response = await fetch(url, {
-      headers: { 'X-API-KEY': apiKey },
-    });
-    const data = await response.json();
+    const response = await fetch(url);
 
-    if (!data.data || !Array.isArray(data.data)) {
-      return new Response(JSON.stringify({ results: [] }), {
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('Klipy error:', response.status, text.substring(0, 300));
+      return new Response(JSON.stringify({ error: 'API error', status: response.status }), {
+        status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const results = data.data.map((item: any) => ({
-      id: item.id,
-      url: item.images?.original?.url || item.images?.fixed_height?.url || item.url || '',
-      preview_url: item.images?.fixed_width_small?.url || item.images?.preview_gif?.url || item.images?.fixed_height_small?.url || item.url || '',
-      width: parseInt(item.images?.fixed_height_small?.width || '200', 10),
-      height: parseInt(item.images?.fixed_height_small?.height || '200', 10),
+    const json = await response.json();
+    const items = json?.data?.data || [];
+
+    const results = items.map((item: any) => ({
+      id: String(item.id || item.slug || Math.random()),
+      slug: item.slug || '',
+      url: item.file?.hd?.gif?.url || item.file?.md?.gif?.url || item.file?.sm?.gif?.url || '',
+      preview_url: item.file?.sm?.gif?.url || item.file?.sm?.webp?.url || item.file?.md?.gif?.url || '',
+      width: item.file?.sm?.gif?.width || item.file?.md?.gif?.width || 200,
+      height: item.file?.sm?.gif?.height || item.file?.md?.gif?.height || 200,
     })).filter((r: any) => r.url);
 
     return new Response(JSON.stringify({ results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
+    console.error('gif-search error:', err);
     return new Response(JSON.stringify({ error: 'Search failed' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
