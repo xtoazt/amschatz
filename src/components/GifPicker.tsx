@@ -21,25 +21,32 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GifResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
+      setError(false);
       return;
     }
 
     setLoading(true);
+    setError(false);
     try {
-      const { data, error } = await supabase.functions.invoke('gif-search', {
-        body: { q: q.trim(), limit: 20 },
+      const { data, error: fnError } = await supabase.functions.invoke('gif-search', {
+        body: { q: q.trim(), limit: 24 },
       });
 
-      if (!error && data?.results) {
+      if (fnError || !data?.results) {
+        setError(true);
+        setResults([]);
+      } else {
         setResults(data.results);
       }
     } catch {
-      // silent
+      setError(true);
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -48,7 +55,7 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
   const handleQueryChange = (value: string) => {
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(value), 400);
+    debounceRef.current = setTimeout(() => search(value), 300);
   };
 
   const handleSelect = (url: string) => {
@@ -56,6 +63,7 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
     setOpen(false);
     setQuery('');
     setResults([]);
+    setError(false);
   };
 
   return (
@@ -73,43 +81,49 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
       <PopoverContent
         side="top"
         align="start"
-        className="w-80 p-0 bg-black border border-white"
+        className="w-80 p-0 bg-background border border-foreground"
       >
         {/* Search input */}
-        <div className="flex items-center gap-2 p-2 border-b border-white">
-          <Search className="w-3.5 h-3.5 text-white shrink-0" />
+        <div className="flex items-center gap-2 p-2 border-b border-foreground">
+          <Search className="w-3.5 h-3.5 text-foreground shrink-0" />
           <input
             value={query}
             onChange={e => handleQueryChange(e.target.value)}
             placeholder="Search GIFs..."
             autoFocus
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-400 outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             maxLength={100}
           />
           {query && (
-            <button onClick={() => { setQuery(''); setResults([]); }}>
-              <X className="w-3.5 h-3.5 text-white" />
+            <button onClick={() => { setQuery(''); setResults([]); setError(false); }}>
+              <X className="w-3.5 h-3.5 text-foreground" />
             </button>
           )}
         </div>
 
         {/* Results grid */}
-        <div className="max-h-64 overflow-y-auto scrollbar-thin p-1.5 bg-black">
+        <div className="max-h-64 overflow-y-auto scrollbar-thin p-1.5 bg-background">
           {loading && (
             <div className="flex justify-center py-8">
-              <span className="text-xs text-white">Searching...</span>
+              <span className="text-xs text-muted-foreground animate-pulse">Searching the void...</span>
             </div>
           )}
 
-          {!loading && results.length === 0 && query && (
+          {!loading && error && (
             <div className="flex justify-center py-8">
-              <span className="text-xs text-white">No results</span>
+              <span className="text-xs text-muted-foreground">Search failed. Try again.</span>
             </div>
           )}
 
-          {!loading && results.length === 0 && !query && (
+          {!loading && !error && results.length === 0 && query && (
             <div className="flex justify-center py-8">
-              <span className="text-xs text-white">Type to search GIFs</span>
+              <span className="text-xs text-muted-foreground">No results</span>
+            </div>
+          )}
+
+          {!loading && !error && results.length === 0 && !query && (
+            <div className="flex justify-center py-8">
+              <span className="text-xs text-muted-foreground">Type to search GIFs</span>
             </div>
           )}
 
@@ -119,23 +133,13 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
                 <button
                   key={gif.id}
                   onClick={() => handleSelect(gif.url)}
-                  className="relative overflow-hidden rounded-sm border border-transparent hover:border-white transition-all group"
-                  style={{ borderWidth: '1px' }}
+                  className="relative overflow-hidden border border-foreground hover:border-primary transition-all duration-200"
                 >
                   <img
                     src={gif.preview_url}
                     alt=""
                     loading="lazy"
-                    className="w-full h-24 object-cover transition-all duration-300"
-                    style={{
-                      filter: 'grayscale(100%)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.filter = 'grayscale(0%)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.filter = 'grayscale(100%)';
-                    }}
+                    className="w-full h-24 object-cover grayscale hover:grayscale-0 transition-all duration-200 ease-in-out"
                   />
                 </button>
               ))}
@@ -144,8 +148,8 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
         </div>
 
         {/* Attribution */}
-        <div className="px-2 py-1 border-t border-white bg-black">
-          <span className="text-[9px] text-white">Powered by GIPHY</span>
+        <div className="px-2 py-1 border-t border-foreground bg-background">
+          <span className="text-[9px] text-muted-foreground">Powered by Klipy</span>
         </div>
       </PopoverContent>
     </Popover>
