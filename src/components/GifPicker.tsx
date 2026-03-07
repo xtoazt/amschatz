@@ -89,9 +89,9 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
           <input
             value={query}
             onChange={e => handleQueryChange(e.target.value)}
-            placeholder="Search GIFs..."
+            placeholder="Search GIFs via KLIPY"
             autoFocus
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-foreground/50 outline-none"
             maxLength={100}
           />
           {query && (
@@ -148,8 +148,8 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
         </div>
 
         {/* Attribution */}
-        <div className="px-2 py-1 border-t border-foreground bg-background">
-          <span className="text-[9px] text-muted-foreground">Powered by Klipy</span>
+        <div className="px-2 py-1.5 border-t border-foreground bg-background">
+          <span className="text-[10px] font-mono text-foreground/70 tracking-wide">Powered by KLIPY</span>
         </div>
       </PopoverContent>
     </Popover>

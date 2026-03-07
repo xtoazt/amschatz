@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bell, BellOff, LogOut, Plus, Check, CheckCheck } from 'lucide-react';
+import { Send, Bell, BellOff, LogOut, Plus, Check, CheckCheck, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GifPicker } from '@/components/GifPicker';
+import { FullscreenImageViewer } from '@/components/FullscreenImageViewer';
 import { ChatMessage } from '@/types/chat';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -71,13 +73,69 @@ export function ChatArea({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
+  const lastMessageCountRef = useRef(messages.length);
+  const userScrolledRef = useRef(false);
+
+  const checkIfScrolledUp = useCallback(() => {
+    if (!scrollContainerRef.current) return false;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const threshold = 100;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < threshold;
+    return !isAtBottom;
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const scrolledUp = checkIfScrolledUp();
+    setIsScrolledUp(scrolledUp);
+
+    if (!scrolledUp) {
+      setUnreadCount(0);
+      userScrolledRef.current = false;
+    } else {
+      userScrolledRef.current = true;
+    }
+  }, [checkIfScrolledUp]);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    endRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    setUnreadCount(0);
+    setIsScrolledUp(false);
+    userScrolledRef.current = false;
+  }, []);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  useEffect(() => {
+    const newMessageCount = messages.length;
+    const hasNewMessages = newMessageCount > lastMessageCountRef.current;
+
+    if (hasNewMessages) {
+      const isUserScrolledUp = checkIfScrolledUp();
+
+      if (isUserScrolledUp && userScrolledRef.current) {
+        const newMessagesAdded = newMessageCount - lastMessageCountRef.current;
+        setUnreadCount(prev => prev + newMessagesAdded);
+      } else {
+        scrollToBottom(false);
+      }
+    }
+
+    lastMessageCountRef.current = newMessageCount;
+  }, [messages, checkIfScrolledUp, scrollToBottom]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,6 +191,10 @@ export function ChatArea({
     if (file) handleFileUpload(file);
   };
 
+  const handleImageClick = (imageUrl: string) => {
+    setFullscreenImage(imageUrl);
+  };
+
   const formatTime = (ts: number) =>
     new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -179,7 +241,7 @@ export function ChatArea({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-2">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-2">
         {messages.map((msg) => {
           if (msg.type === 'system') {
             return (
@@ -232,12 +294,18 @@ export function ChatArea({
                   }`}
                 >
                   {msg.imageUrl && !imageExpired && (
-                    <img
-                      src={msg.imageUrl}
-                      alt="Shared image"
-                      className="max-w-full rounded-lg mb-1 border border-foreground/20 grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
-                      loading="lazy"
-                    />
+                    <div className="relative">
+                      <img
+                        src={msg.imageUrl}
+                        alt="Shared image"
+                        onClick={() => handleImageClick(msg.imageUrl!)}
+                        className="max-w-full rounded-lg mb-1 border border-foreground/20 grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
+                        loading="lazy"
+                      />
+                      {!msg.text && (
+                        <span className="absolute bottom-2 right-1.5 text-[8px] font-mono text-foreground/80 bg-background/60 px-1 py-0.5 rounded">via KLIPY</span>
+                      )}
+                    </div>
                   )}
                   {msg.imageUrl && imageExpired && (
                     <span className="text-[11px] italic text-muted-foreground">Image expired</span>
@@ -279,6 +347,27 @@ export function ChatArea({
         })}
         <div ref={endRef} />
       </div>
+
+      <AnimatePresence>
+        {isScrolledUp && unreadCount > 0 && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => scrollToBottom(true)}
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-12 h-12 rounded-full bg-black border border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-lg"
+            aria-label="Scroll to bottom"
+          >
+            <ChevronDown className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white text-black text-[10px] font-mono font-bold flex items-center justify-center border border-black">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {typingUsers.length > 0 && (
         <div className="px-4 pb-1 flex items-center gap-2">
@@ -322,7 +411,7 @@ export function ChatArea({
             onChange={handleInputChange}
             placeholder={isInputDisabled ? 'Chat is frozen' : 'Message'}
             disabled={isInputDisabled}
-            className="flex-1 bg-input rounded-lg py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex-1 bg-input rounded-lg py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans"
             maxLength={2000}
           />
           <button
@@ -334,6 +423,13 @@ export function ChatArea({
           </button>
         </div>
       </form>
+
+      {fullscreenImage && (
+        <FullscreenImageViewer
+          imageUrl={fullscreenImage}
+          onClose={() => setFullscreenImage(null)}
+        />
+      )}
     </div>
   );
 }

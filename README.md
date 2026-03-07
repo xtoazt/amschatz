@@ -1,11 +1,14 @@
-### Core Features
+Core Features
+Monochromatic UI: A strict black-and-white aesthetic. No distractions, no branding, and no unnecessary buttons.
 
-* **Monochromatic UI:** A strict black-on-black and white-on-white aesthetic with no branding or deprecated buttons.
-* **Command-Line Admin:** Typing `/admin` opens a hidden panel to freeze the chat, send announcements, or "Nuke" the database.
-* **Image Sharing:** Drag-and-drop or file-picker uploads with a grayscale theme filter.
-* **Auto purge:** Automated and permanent deletion of all shared media 12 hours after upload. Any chat gets deleted automatically once everyone disconnects from the party.
-* **iMessage Parity:** Native typing indicators, read receipts, and global edit/unsend functionality.
-* **Preference Persistence:** Notification and UI settings remain saved across page refreshes.
+iMessage Parity: High-end UX featuring real-time typing indicators, read receipts, and global edit/unsend functionality.
 
-Disclaimer: Most of the work is done by an AI. I have coded some of these things, but it was mostly all lovable.ai.
+10-Minute Auto-Purge: Total volatility. Every message, image, and GIF is permanently deleted from the database 10 minutes after being sent.
 
+Klipy Integration: Built-in GIF search via Klipy API (bypassing restricted networks) with an automatic grayscale filter to match the UI.
+
+Command-Line Admin: Type /admin to access a hidden terminal. Freeze the room, send global announcements, or "Nuke" the entire database instantly.
+
+Image Sharing: Drag-and-drop or file-picker uploads with automatic metadata scrubbing and grayscale filtering.
+
+Preference Persistence: Notification and UI settings stay saved across refreshes without requiring a traditional account.

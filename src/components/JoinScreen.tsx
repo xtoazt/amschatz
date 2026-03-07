@@ -29,7 +29,6 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
       <form onSubmit={handleJoin} className="w-full max-w-sm space-y-5">
         <div className="text-center mb-6">
           <h1 className="text-lg font-medium text-foreground tracking-tight font-mono">v0id</h1>
-          <p className="text-[10px] text-muted-foreground font-mono mt-1">10-minute burn. no traces.</p>
         </div>
 
         {error && (
