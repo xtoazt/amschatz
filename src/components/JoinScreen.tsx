@@ -25,26 +25,26 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <form onSubmit={handleJoin} className="w-full max-w-sm space-y-5">
+    <div className="min-h-screen flex items-center justify-center p-4 film-grain scanline">
+      <form onSubmit={handleJoin} className="w-full max-w-sm space-y-5 border border-border p-8">
         <div className="text-center mb-6">
-          <h1 className="text-lg font-medium text-foreground tracking-tight font-mono">v0id</h1>
+          <h1 className="text-lg font-medium text-foreground tracking-[0.3em] font-mono uppercase glitch-text">v0id</h1>
         </div>
 
         {error && (
-          <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
+          <Alert variant="destructive" className="bg-destructive/10 border border-destructive/30">
             <AlertDescription className="text-xs text-destructive font-mono">{error}</AlertDescription>
           </Alert>
         )}
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground font-mono">Username</label>
+          <label className="text-[10px] font-medium text-muted-foreground font-mono uppercase tracking-widest">Username</label>
           <input
             type="text"
             value={username}
             onChange={(e) => { setUsername(e.target.value); setError(null); }}
             placeholder="your identity"
-            className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono"
+            className="w-full bg-input py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none border border-border transition-all font-mono input-glow"
             maxLength={20}
             required
             disabled={joining}
@@ -52,13 +52,13 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground font-mono">Room Name</label>
+          <label className="text-[10px] font-medium text-muted-foreground font-mono uppercase tracking-widest">Room Name</label>
           <input
             type="text"
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             placeholder="any name creates a room"
-            className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono"
+            className="w-full bg-input py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none border border-border transition-all font-mono input-glow"
             maxLength={30}
             required
             disabled={joining}
@@ -68,7 +68,7 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
         <button
           type="submit"
           disabled={!username.trim() || !roomName.trim() || joining}
-          className="w-full bg-primary text-primary-foreground font-medium py-2.5 rounded-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-20 disabled:cursor-not-allowed font-mono"
+          className="w-full btn-invert font-medium py-2.5 flex items-center justify-center gap-2 font-mono uppercase tracking-widest text-sm"
         >
           {joining ? (
             <>

@@ -31,7 +31,6 @@ const Index = () => {
   };
 
   const handleJoin = async (username: string, roomCode: string) => {
-    // Admin bypass: skip duplicate check
     const isAdmin = sessionStorage.getItem('is_admin') === 'true';
     if (!isAdmin) {
       const available = await checkUsernameAvailable(username, roomCode);
@@ -48,7 +47,7 @@ const Index = () => {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden film-grain scanline">
       <ChatSidebar
         roomCode={state.roomCode}
         users={state.users}

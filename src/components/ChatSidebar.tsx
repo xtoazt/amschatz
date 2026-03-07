@@ -9,31 +9,31 @@ interface ChatSidebarProps {
 
 export function ChatSidebar({ roomCode, users, onLeave }: ChatSidebarProps) {
   return (
-    <div className="w-56 h-full bg-card flex flex-col shrink-0 hidden md:flex">
-      <div className="p-4">
-        <span className="text-xs font-medium text-muted-foreground">Room</span>
-        <p className="text-sm font-medium text-foreground truncate mt-0.5">{roomCode}</p>
+    <div className="w-56 h-full bg-card flex flex-col shrink-0 hidden md:flex border-r border-border">
+      <div className="p-4 border-b border-border">
+        <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Room</span>
+        <p className="text-sm font-mono text-foreground truncate mt-0.5">{roomCode}</p>
       </div>
 
-      <div className="flex-1 p-4 overflow-y-auto scrollbar-thin">
+      <div className="flex-1 p-4 overflow-y-auto scrollbar-void">
         <div className="flex items-center gap-1.5 mb-3">
           <Users className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Online — {users.length}</span>
+          <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Online — {users.length}</span>
         </div>
         <div className="space-y-1.5">
           {users.map((u) => (
-            <div key={u.username} className="flex items-center gap-2 px-2 py-1 rounded">
-              <div className="w-1.5 h-1.5 rounded-full bg-online" />
-              <span className="text-sm text-foreground truncate">{u.username}</span>
+            <div key={u.username} className="flex items-center gap-2 px-2 py-1">
+              <div className="w-1.5 h-1.5 bg-online" />
+              <span className="text-sm text-foreground truncate font-mono">{u.username}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 border-t border-border">
         <button
           onClick={onLeave}
-          className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 rounded-md hover:bg-muted"
+          className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 font-mono hover:bg-secondary"
         >
           <LogOut className="w-4 h-4" />
           Leave
