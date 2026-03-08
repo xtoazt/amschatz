@@ -174,7 +174,7 @@ export default function Changelog() {
                   <GitCommit className="w-3 h-3 mt-0.5 text-muted-foreground shrink-0" />
                   <span className="text-muted-foreground font-medium shrink-0">{c.sha.slice(0, 7)}</span>
                   <span className="text-foreground/80 group-hover:text-foreground transition-colors truncate">
-                    {c.message.split('\n')[0]}
+                    {(c.message || '').split('\n')[0]}
                   </span>
                 </a>
               ))}
