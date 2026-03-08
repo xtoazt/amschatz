@@ -376,7 +376,7 @@ export function ChatArea({
 
       {/* Scroll to bottom */}
       <AnimatePresence>
-        {isScrolledUp && unreadCount > 0 && (
+        {isScrolledUp && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
