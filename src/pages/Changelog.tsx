@@ -28,7 +28,7 @@ export default function Changelog() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`https://api.github.com/repos/${REPO}/commits?per_page=5`)
+    fetch(`https://api.github.com/repos/${REPO}/commits?per_page=100`)
       .then(res => {
         if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
         return res.json();
