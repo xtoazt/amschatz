@@ -259,7 +259,7 @@ export function useChat() {
 
             notifCooldownRef.current = window.setTimeout(() => {
               if (pendingNotifCount.current > 0) {
-                new Notification(state.roomCode, {
+                new Notification(roomCodeRef.current, {
                   body: `+ ${pendingNotifCount.current} more message${pendingNotifCount.current > 1 ? 's' : ''}`,
                   icon: '/favicon.ico',
                 });
