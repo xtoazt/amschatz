@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { ChangelogDialog } from '@/components/ChangelogDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface JoinScreenProps {
   onJoin: (username: string, roomCode: string, isPasswordProtected: boolean) => Promise<{ error: string | null }>;
