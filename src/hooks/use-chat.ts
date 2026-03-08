@@ -531,6 +531,7 @@ export function useChat() {
       typingUsers: [],
       frozen: false,
       frozenBy: null,
+      isPasswordProtected: false,
     }));
   }, []);
 
