@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      changelog_summaries: {
+        Row: {
+          created_at: string
+          id: string
+          latest_sha: string
+          summary: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latest_sha: string
+          summary: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latest_sha?: string
+          summary?: string
+        }
+        Relationships: []
+      }
       feature_summaries: {
         Row: {
           created_at: string
