@@ -423,6 +423,12 @@ export function useChat() {
               frozen: false,
               frozenBy: null,
             }));
+            setTimeout(() => {
+              toast.error('IDENTITY CONFLICT', {
+                description: `"${username}" is already active in this void. Choose another identity.`,
+                duration: 5000,
+              });
+            }, 100);
             resolveJoin({ error: 'Username already active in this void. Please choose another identity.' });
             return;
           }
@@ -432,14 +438,17 @@ export function useChat() {
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({ username, joinedAt: Date.now() });
-          channel.send({ type: 'broadcast', event: 'system', payload: systemMsg });
+          // Don't broadcast join message yet — wait for duplicate check
           // Resolve after a delay to allow presence sync with duplicate info
           if (skipDuplicateCheck) {
+            channel.send({ type: 'broadcast', event: 'system', payload: systemMsg });
             resolveJoin({ error: null });
           } else {
             setTimeout(() => {
               if (!duplicateChecked) {
                 duplicateChecked = true;
+                // Only broadcast join after confirming no duplicate
+                channel.send({ type: 'broadcast', event: 'system', payload: systemMsg });
                 resolveJoin({ error: null });
               }
             }, 1500);
