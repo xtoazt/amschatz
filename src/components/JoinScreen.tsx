@@ -48,6 +48,8 @@ async function checkPresence(roomName: string): Promise<boolean> {
     setTimeout(() => { if (!resolved) { resolved = true; resolve(false); } }, 2000);
   });
   supabase.removeChannel(channel);
+  // Allow server to fully clean up before re-subscribing in joinRoom
+  await new Promise(r => setTimeout(r, 300));
   return hasUsers;
 }
 
