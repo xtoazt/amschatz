@@ -66,7 +66,7 @@ export function ChatArea({
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [uiScale, setUiScale] = useState(() => {
     const saved = localStorage.getItem('v0id-ui-scale');
-    return saved ? Number(saved) : 100;
+    return saved ? Number(saved) : 50;
   });
 
   const handleScaleChange = useCallback((val: number[]) => {
