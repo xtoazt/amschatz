@@ -156,23 +156,37 @@ export function useChat() {
         if (resolved) return;
         resolved = true;
         clearTimeout(timeout);
-        supabase.removeChannel(peekChannel);
+        peekChannel.untrack().then(() => supabase.removeChannel(peekChannel)).catch(() => supabase.removeChannel(peekChannel));
         resolve(available);
       };
 
       const timeout = setTimeout(() => finish(true), 4000);
 
+      let syncCount = 0;
       peekChannel.on('presence', { event: 'sync' }, () => {
-        // Wait a tick for presence state to populate
-        setTimeout(() => {
+        syncCount++;
+        // First sync is our own track, second sync includes existing users
+        // Wait for at least the second sync or check after a delay
+        if (syncCount >= 2) {
           const presenceState = peekChannel.presenceState();
           const activeKeys = Object.keys(presenceState).filter(k => !k.startsWith('_peek_'));
           const taken = activeKeys.includes(username);
           finish(!taken);
-        }, 500);
+        }
       });
 
-      peekChannel.subscribe();
+      peekChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await peekChannel.track({ _peek: true });
+          // Also check after a delay in case only one sync fires
+          setTimeout(() => {
+            const presenceState = peekChannel.presenceState();
+            const activeKeys = Object.keys(presenceState).filter(k => !k.startsWith('_peek_'));
+            const taken = activeKeys.includes(username);
+            finish(!taken);
+          }, 1500);
+        }
+      });
     });
   }, []);
 
