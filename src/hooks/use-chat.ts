@@ -397,7 +397,19 @@ export function useChat() {
           const entries = presenceState[username];
           if (entries && entries.length > 1) {
             duplicateChecked = true;
-            // Duplicate detected — leave immediately
+            // Broadcast impersonation warning to the room before leaving
+            channel.send({
+              type: 'broadcast',
+              event: 'system',
+              payload: {
+                id: generateId(),
+                username: 'system',
+                text: `⚠ Someone tried joining as "${username}"`,
+                timestamp: Date.now(),
+                type: 'system',
+              },
+            });
+            // Leave the channel
             channel.untrack().then(() => supabase.removeChannel(channel)).catch(() => supabase.removeChannel(channel));
             channelRef.current = null;
             setState(prev => ({
