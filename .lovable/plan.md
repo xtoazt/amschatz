@@ -1,19 +1,19 @@
-## Plan: Admin Authentication, GIF Integration & Cleanup — COMPLETED
 
-### 1. Secure Admin Authentication ✅
-- `ADMIN_MASTER_KEY` stored as backend secret
-- `verify-admin` edge function with constant-time comparison
-- `AdminAuthOverlay` terminal-style component (black bg, green monospace)
-- `sessionStorage` persistence for admin status
-- `isRoomCreator` removed from ChatState and all references
 
-### 2. GIF Integration (Klipy API) ✅
-- `KLIPY_API_KEY` stored as backend secret
-- `gif-search` edge function proxying to Klipy GIF Search API
-- `GifPicker` component with monochromatic grid, grayscale filter, color on hover
-- GIFs sent as ephemeral messages with 12-hour imageExpiry
+## Fix Tooltip Timestamp Positioning
 
-### 3. Cleanup ✅
-- `exportHistory` removed (dead code)
-- Unused `ChatMessage` import removed from JoinScreen
-- `importedMessages` param removed from JoinScreen onJoin signature
+The timestamp tooltip uses Radix `TooltipContent` with `side="left"` or `side="right"`, but it's getting clipped/hidden behind the room header because there's no `z-index` or collision avoidance configured.
+
+### Fix in `src/components/chat/MessageBubble.tsx` (lines 335-336)
+
+Replace the Radix Tooltip approach with a simpler CSS hover-based inline timestamp that appears right next to the message bubble — no portal/overlay needed, so it can't be hidden behind the header.
+
+**Approach:** Remove `TooltipProvider`/`Tooltip`/`TooltipTrigger`/`TooltipContent` entirely. Instead, add a hover state or CSS `group-hover` pattern: wrap the message row in a `group` class, and render a small absolute-positioned timestamp element that appears on hover, aligned to the left (for own messages) or right (for other messages) of the bubble — inline within the flex row.
+
+### Changes:
+1. Remove Tooltip imports and wrapper from the return JSX (lines 323-339)
+2. Change the outer `div` wrapping the bubble to use `group` class and `relative` + `flex items-center`
+3. Add a hover-revealed timestamp `<span>` positioned beside the bubble using `opacity-0 group-hover:opacity-100 transition-opacity` — placed before the bubble for own messages (left side) and after for others (right side)
+
+Single file change: `src/components/chat/MessageBubble.tsx`
+
