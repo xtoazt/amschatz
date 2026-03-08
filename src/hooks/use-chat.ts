@@ -505,6 +505,15 @@ export function useChat() {
           }),
     };
 
+    console.log('[v0] Sending file message:', { 
+      isImage, 
+      fileType: file.type, 
+      fileName: file.name,
+      msgFileUrl: msg.fileUrl,
+      msgFileName: msg.fileName,
+      msgFileMimeType: msg.fileMimeType
+    });
+
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
 
     if (channelRef.current) {

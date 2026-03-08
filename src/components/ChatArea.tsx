@@ -70,16 +70,16 @@ function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorPr
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="bg-card border border-foreground/20 rounded-lg p-6 max-w-sm w-full space-y-6"
+        className="bg-background border border-foreground p-6 max-w-sm w-full space-y-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 border border-foreground flex items-center justify-center shrink-0">
               <FileText className="w-5 h-5 text-foreground" />
             </div>
             <div className="space-y-1 min-w-0 flex-1">
-              <p className="text-sm font-mono text-foreground truncate max-w-[200px]" title={fileName}>
+              <p className="text-sm font-mono text-foreground break-all">
                 {fileName}
               </p>
               {fileSize !== undefined && (
@@ -91,7 +91,7 @@ function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorPr
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors active:scale-[0.95]"
+            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors active:scale-[0.95] shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -99,7 +99,7 @@ function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorPr
 
         <button
           onClick={handleDownload}
-          className="w-full py-2.5 px-4 border border-foreground rounded-lg text-foreground font-mono text-sm flex items-center justify-center gap-2 hover:bg-foreground hover:text-background transition-all active:scale-[0.95]"
+          className="w-full py-2.5 px-4 bg-foreground text-background font-mono text-sm flex items-center justify-center gap-2 hover:bg-foreground/90 transition-all active:scale-[0.95]"
         >
           <Download className="w-4 h-4" />
           Download
@@ -317,7 +317,7 @@ export function ChatArea({
     >
       {dragging && (
         <div className="absolute inset-0 z-40 bg-background/90 flex items-center justify-center pointer-events-none">
-          <span className="text-foreground text-sm font-medium">Drop image to share</span>
+          <span className="text-foreground text-sm font-mono">Drop file to share</span>
         </div>
       )}
 
@@ -398,6 +398,20 @@ export function ChatArea({
           const imageExpired = isImageExpired(msg.imageExpiry);
           const hasFile = msg.fileUrl && msg.fileName;
           const isFileImageOrGif = msg.fileUrl ? isImageOrGif(msg.fileUrl, msg.fileMimeType) : true;
+          
+          // Debug file rendering
+          if (msg.fileUrl || msg.fileName || msg.fileMimeType) {
+            console.log('[v0] File message debug:', { 
+              id: msg.id,
+              fileUrl: msg.fileUrl, 
+              fileName: msg.fileName, 
+              fileSize: msg.fileSize,
+              fileMimeType: msg.fileMimeType,
+              hasFile, 
+              isFileImageOrGif,
+              shouldRenderFileBlock: hasFile && !isFileImageOrGif
+            });
+          }
 
           const bubble = (
             <div className="max-w-[75%] space-y-0.5">
@@ -443,10 +457,13 @@ export function ChatArea({
                   {hasFile && !isFileImageOrGif && (
                     <button
                       onClick={() => setInspectedFile({ name: msg.fileName!, size: msg.fileSize, url: msg.fileUrl! })}
-                      className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg border border-foreground/10 hover:bg-secondary transition-all active:scale-[0.95] mb-1 w-full"
+                      className="flex items-center gap-2 p-2.5 bg-transparent border border-foreground hover:bg-foreground/10 transition-all active:scale-[0.95] mb-1 w-full"
                     >
                       <FileText className="w-4 h-4 text-foreground shrink-0" />
-                      <span className="text-xs font-mono text-foreground truncate">{msg.fileName}</span>
+                      <span className="text-xs font-mono text-foreground truncate flex-1 text-left">{msg.fileName}</span>
+                      {msg.fileSize !== undefined && (
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">{formatFileSize(msg.fileSize)}</span>
+                      )}
                     </button>
                   )}
                   {msg.text}
