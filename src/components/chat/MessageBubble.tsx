@@ -241,7 +241,7 @@ export const MessageBubble = memo(function MessageBubble({
               onInspect={() => onInspectFile({ name: msg.fileName!, size: msg.fileSize, url: msg.fileUrl!, mimeType: msg.fileMimeType, timestamp: msg.timestamp })}
             />
           )}
-          {msg.text}
+          {msg.text && renderMessageText(msg.text)}
         </div>
       )}
 
