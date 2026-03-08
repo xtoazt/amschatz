@@ -801,9 +801,19 @@ export function useChat() {
     }
   }, []);
 
+  const toggleGingerMode = useCallback(() => {
+    setState(prev => {
+      const enabled = !prev.gingerMode;
+      if (channelRef.current) {
+        channelRef.current.send({ type: 'broadcast', event: 'ginger', payload: { enabled } });
+      }
+      return { ...prev, gingerMode: enabled };
+    });
+  }, []);
+
   return {
     state, joinRoom, leaveRoom, sendMessage, sendTyping, sendGif,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
-    broadcastScreenshot, kickUser, reactToMessage,
+    broadcastScreenshot, kickUser, reactToMessage, toggleGingerMode,
   };
 }

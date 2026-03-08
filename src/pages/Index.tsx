@@ -6,6 +6,7 @@ import { ChatSidebar } from '@/components/ChatSidebar';
 import { ChatArea } from '@/components/ChatArea';
 import { AdminPanel } from '@/components/AdminPanel';
 import { AdminAuthOverlay } from '@/components/AdminAuthOverlay';
+import { CloverRain } from '@/components/CloverRain';
 
 const Index = () => {
   const {

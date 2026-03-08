@@ -183,6 +183,15 @@ export function AdminPanel({
               Kick User
             </motion.button>
 
+            <motion.button
+              onClick={onToggleGinger}
+              whileTap={{ scale: 0.95 }}
+              className="w-full flex items-center gap-2 border border-foreground/30 text-foreground text-sm font-mono py-2.5 px-3 rounded-xl hover:border-foreground transition-colors"
+            >
+              <Clover className="w-4 h-4" />
+              {gingerMode ? 'Disable Ginger Mode' : 'Enable Ginger Mode'}
+            </motion.button>
+
             {/* Announcement */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center gap-2">
