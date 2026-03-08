@@ -174,10 +174,11 @@ export const ReactionPicker = memo(function ReactionPicker({ onSelect, recordRea
               )
             ) : (
               <>
+                {frequentlyUsed.length > 0 && (
                 <div>
-                  <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider px-1">Frequently Used</span>
+                  <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider px-1">Your Frequent</span>
                   <div className="flex flex-wrap gap-0.5 mt-0.5">
-                    {FREQUENTLY_USED.map(emoji => (
+                    {frequentlyUsed.map(emoji => (
                       <button
                         key={emoji}
                         onClick={() => handlePick(emoji)}
