@@ -39,6 +39,7 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
   const [username, setUsername] = useState('');
   const [roomName, setRoomName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [roomTaken, setRoomTaken] = useState(false);
   const [joining, setJoining] = useState(false);
   const [passwordProtect, setPasswordProtect] = useState(false);
   const [roomPassword, setRoomPassword] = useState('');
@@ -64,6 +65,10 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
       if (roomAlreadyHasPassword) {
         // Room is already locked — must verify password regardless of toggle state
         if (!needsPassword) {
+          toast.info('ROOM IS LOCKED', {
+            description: 'This room is password-protected. Enter the password to join.',
+            duration: 4000,
+          });
           setNeedsPassword(true);
           setPasswordProtect(false);
           setCheckingRoom(false);
@@ -100,6 +105,7 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
         supabase.removeChannel(channel);
 
         if (hasActiveUsers) {
+          setRoomTaken(true);
           setError('ROOM ALREADY ACTIVE');
           toast.error('CANNOT SET PASSWORD', {
             description: 'This room already has active users. You cannot add a password to an existing room.',
@@ -201,9 +207,9 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
             <input
               type="text"
               value={roomName}
-              onChange={(e) => { setRoomName(e.target.value); setNeedsPassword(false); setJoinPassword(''); }}
+              onChange={(e) => { setRoomName(e.target.value); setNeedsPassword(false); setJoinPassword(''); setRoomTaken(false); }}
               placeholder="any code creates a room"
-              className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-transparent placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono caret-foreground selection:bg-foreground/20 selection:text-transparent"
+              className={`w-full bg-input rounded-md py-2.5 px-3 text-sm text-transparent placeholder:text-muted-foreground outline-none focus:ring-1 transition-colors font-mono caret-foreground selection:bg-foreground/20 selection:text-transparent ${roomTaken ? 'ring-2 ring-destructive focus:ring-destructive' : 'focus:ring-ring'}`}
               maxLength={30}
               required
               disabled={isLoading}
