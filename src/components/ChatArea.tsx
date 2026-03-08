@@ -311,9 +311,9 @@ export function ChatArea({
               <div key={msg.id}>
                 {unreadMarkerId === msg.id && (
                   <div className="flex items-center gap-3 my-2 px-2">
-                    <div className="flex-1 h-px bg-destructive/40" />
-                    <span className="text-[10px] font-mono text-destructive/60 shrink-0">new messages</span>
-                    <div className="flex-1 h-px bg-destructive/40" />
+                    <div className="flex-1 h-px bg-foreground/70" />
+                    <span className="text-[10px] font-mono text-foreground font-semibold shrink-0">new messages</span>
+                    <div className="flex-1 h-px bg-foreground/70" />
                   </div>
                 )}
                 <MessageBubble
