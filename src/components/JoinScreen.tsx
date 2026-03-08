@@ -36,7 +36,7 @@ function GlitchTitle() {
 }
 
 async function checkPresence(roomName: string): Promise<boolean> {
-  const channel = supabase.channel(`room:${roomName}`);
+  const channel = supabase.channel(`presence-check:${roomName}:${Date.now()}`);
   const hasUsers = await new Promise<boolean>((resolve) => {
     let resolved = false;
     channel.on('presence', { event: 'sync' }, () => {
