@@ -2,7 +2,6 @@ import { memo, useState, useMemo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { useFrequentReactions } from '@/hooks/use-frequent-reactions';
 
 const EMOJI_MAP: Record<string, string[]> = {
   '👍': ['thumbs up', 'like', 'yes', 'ok', 'good', 'approve'],
@@ -70,8 +69,6 @@ const EMOJI_MAP: Record<string, string[]> = {
   '🤷': ['shrug', 'idk', 'whatever', 'dunno'],
 };
 
-const FREQUENTLY_USED = ['👍', '❤️', '😂', '😭', '💀', '🔥', '💯', '😍', '🙏', '👀', '😤', '🥺'];
-
 const CATEGORIES = [
   { label: 'Popular', emojis: ['👍', '👎', '❤️', '😂', '😭', '💀', '🔥', '💯', '🙏', '👀', '🎉', '✅'] },
   { label: 'Faces', emojis: ['😀', '😆', '🤣', '😅', '🥹', '🤩', '😎', '🤔', '😏', '😈', '🤡', '🫠', '😮‍💨', '🤯', '😴', '🥴', '🫡'] },
@@ -83,15 +80,15 @@ const CATEGORIES = [
 
 interface ReactionPickerProps {
   onSelect: (emoji: string) => void;
-  recordReaction?: (emoji: string) => void;
+  quickReactions: string[];
+  frequentlyUsed: string[];
+  recordReaction: (emoji: string) => void;
 }
 
-export const ReactionPicker = memo(function ReactionPicker({ onSelect, recordReaction: externalRecord }: ReactionPickerProps) {
+export const ReactionPicker = memo(function ReactionPicker({ onSelect, quickReactions, frequentlyUsed, recordReaction }: ReactionPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const { quickReactions, frequentlyUsed, recordReaction } = useFrequentReactions();
-  const record = externalRecord || recordReaction;
 
   useEffect(() => {
     if (open) {
@@ -109,13 +106,13 @@ export const ReactionPicker = memo(function ReactionPicker({ onSelect, recordRea
   }, [search]);
 
   const handlePick = (emoji: string) => {
-    record(emoji);
+    recordReaction(emoji);
     onSelect(emoji);
     setOpen(false);
   };
 
   const handleQuickPick = (emoji: string) => {
-    record(emoji);
+    recordReaction(emoji);
     onSelect(emoji);
   };
 

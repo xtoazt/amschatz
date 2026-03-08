@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Bell, BellOff, LogOut, Plus, ChevronDown, ZoomIn, Users } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
@@ -12,6 +12,7 @@ import { FileInspector, InspectedFile } from '@/components/chat/FileInspector';
 import { ReplyPreview } from '@/components/chat/ReplyPreview';
 import { ACCEPTED_FILE_TYPES } from '@/components/chat/FileHelpers';
 import { ChatSidebar } from '@/components/ChatSidebar';
+import { useFrequentReactions } from '@/hooks/use-frequent-reactions';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
@@ -208,8 +209,18 @@ export function ChatArea({
   const handleDrop = (e: React.DragEvent) => { e.preventDefault(); dragCounter.current = 0; setDragging(false); const file = e.dataTransfer.files[0]; if (file) handleFileUpload(file); };
 
   const isInputDisabled = frozen && frozenBy !== currentUser;
+  const { quickReactions, frequentlyUsed, recordReaction } = useFrequentReactions();
 
-  
+  const groupedMessages = useMemo(() => {
+    return messages.map((msg, i) => {
+      const prev = messages[i - 1];
+      const next = messages[i + 1];
+      const isGroupable = msg.type === 'message' && !msg.deleted;
+      const isFirstInGroup = !isGroupable || !prev || prev.type !== 'message' || prev.deleted || prev.username !== msg.username;
+      const isLastInGroup = !isGroupable || !next || next.type !== 'message' || next.deleted || next.username !== msg.username;
+      return { msg, groupInfo: { isFirstInGroup, isLastInGroup } };
+    });
+  }, [messages]);
 
   return (
     <div
@@ -296,14 +307,7 @@ export function ChatArea({
         )}
 
         <AnimatePresence initial={false}>
-          {!nuking && messages.map((msg, i) => {
-            const prev = messages[i - 1];
-            const next = messages[i + 1];
-            const isGroupable = msg.type === 'message' && !msg.deleted;
-            const isFirstInGroup = !isGroupable || !prev || prev.type !== 'message' || prev.deleted || prev.username !== msg.username;
-            const isLastInGroup = !isGroupable || !next || next.type !== 'message' || next.deleted || next.username !== msg.username;
-
-            return (
+          {!nuking && groupedMessages.map(({ msg, groupInfo }, i) => (
               <div key={msg.id}>
                 {unreadMarkerId === msg.id && (
                   <div className="flex items-center gap-3 my-2 px-2">
@@ -316,7 +320,7 @@ export function ChatArea({
                   msg={msg}
                   isOwn={msg.username === currentUser}
                   index={i}
-                  groupInfo={{ isFirstInGroup, isLastInGroup }}
+                  groupInfo={groupInfo}
                   onImageClick={setFullscreenImage}
                   onInspectFile={setInspectedFile}
                   onEdit={handleStartEdit}
@@ -329,10 +333,13 @@ export function ChatArea({
                   onEditTextChange={setEditText}
                   onEditSubmit={handleEditSubmit}
                   onEditCancel={handleEditCancel}
+                  quickReactions={quickReactions}
+                  frequentlyUsed={frequentlyUsed}
+                  recordReaction={recordReaction}
                 />
               </div>
-            );
-          })}
+            ))}
+
         </AnimatePresence>
 
         {/* Nuke dissolve overlay */}

@@ -183,8 +183,6 @@ export function useChat() {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  
-
   const joinRoom = useCallback((username: string, roomCode: string, skipDuplicateCheck = false): Promise<{ error: string | null }> => {
     return new Promise((resolveJoin) => {
       if (channelRef.current) {

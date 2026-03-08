@@ -1,4 +1,5 @@
-import { memo, useState, useEffect } from 'react';
+import { memo } from 'react';
+import { useTick } from '@/hooks/use-tick';
 
 const TEN_MINUTES = 10 * 60 * 1000;
 
@@ -7,12 +8,7 @@ interface SelfDestructTimerProps {
 }
 
 export const SelfDestructTimer = memo(function SelfDestructTimer({ timestamp }: SelfDestructTimerProps) {
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const now = useTick();
 
   const remaining = Math.max(0, (timestamp + TEN_MINUTES) - now);
   const totalSeconds = Math.ceil(remaining / 1000);

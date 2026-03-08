@@ -13,6 +13,7 @@ import {
   TooltipContent,
   TooltipProvider,
 } from '@/components/ui/tooltip';
+import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { StatusIcon } from './StatusIcon';
 import { ImageAttachment } from './ImageAttachment';
@@ -20,7 +21,6 @@ import { FileAttachment } from './FileAttachment';
 import { isImageOrGif, isImageExpired } from './FileHelpers';
 import { SelfDestructTimer } from './SelfDestructTimer';
 import { ReactionPicker } from './ReactionPicker';
-import { useFrequentReactions } from '@/hooks/use-frequent-reactions';
 import type { InspectedFile } from './FileInspector';
 import type { ReplyTo } from '@/types/chat';
 
@@ -46,6 +46,30 @@ interface MessageBubbleProps {
   onEditTextChange: (text: string) => void;
   onEditSubmit: (id: string) => void;
   onEditCancel: () => void;
+  quickReactions: string[];
+  frequentlyUsed: string[];
+  recordReaction: (emoji: string) => void;
+}
+
+const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
+
+function renderMessageText(text: string) {
+  const parts: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  URL_RE.lastIndex = 0;
+  while ((match = URL_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    const url = match[0];
+    parts.push(
+      <a key={match.index} href={url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 decoration-current/40 hover:decoration-current inline-flex items-baseline gap-0.5 break-all">
+        {url}<ExternalLink className="w-2.5 h-2.5 inline shrink-0 translate-y-[1px]" />
+      </a>
+    );
+    lastIndex = match.index + url.length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts.length > 0 ? parts : text;
 }
 
 const formatTime = (ts: number) =>
@@ -98,9 +122,11 @@ export const MessageBubble = memo(function MessageBubble({
   onEditTextChange,
   onEditSubmit,
   onEditCancel,
+  quickReactions,
+  frequentlyUsed,
+  recordReaction,
 }: MessageBubbleProps) {
   const [showReactionPicker, setShowReactionPicker] = useState(false);
-  const { recordReaction } = useFrequentReactions();
 
   if (msg.type === 'system') {
     return (
@@ -215,7 +241,7 @@ export const MessageBubble = memo(function MessageBubble({
               onInspect={() => onInspectFile({ name: msg.fileName!, size: msg.fileSize, url: msg.fileUrl!, mimeType: msg.fileMimeType, timestamp: msg.timestamp })}
             />
           )}
-          {msg.text}
+          {msg.text && renderMessageText(msg.text)}
         </div>
       )}
 
@@ -251,7 +277,7 @@ export const MessageBubble = memo(function MessageBubble({
       <AnimatePresence>
         {showReactionPicker && (
           <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-            <ReactionPicker onSelect={handleReact} />
+            <ReactionPicker onSelect={handleReact} quickReactions={quickReactions} frequentlyUsed={frequentlyUsed} recordReaction={recordReaction} />
           </div>
         )}
       </AnimatePresence>
