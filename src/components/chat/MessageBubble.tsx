@@ -7,6 +7,13 @@ import {
   ContextMenuContent,
   ContextMenuItem,
 } from '@/components/ui/context-menu';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 import { StatusIcon } from './StatusIcon';
 import { ImageAttachment } from './ImageAttachment';
 import { FileAttachment } from './FileAttachment';
