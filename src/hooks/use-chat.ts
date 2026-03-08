@@ -3,6 +3,7 @@ import { ChatMessage, RoomUser, ChatState, ReplyTo } from '@/types/chat';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { toast } from 'sonner';
 
 const generateId = () => Math.random().toString(36).substring(2, 12);
 const TEN_MINUTES = 10 * 60 * 1000;
