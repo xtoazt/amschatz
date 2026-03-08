@@ -33,24 +33,43 @@ export default function Changelog() {
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`https://api.github.com/repos/${REPO}/commits?per_page=100`)
-      .then(res => {
-        if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
-        return res.json();
-      })
-      .then((data: Commit[]) => {
-        setAllCommits(data);
+    async function fetchAllCommits() {
+      try {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const since = oneWeekAgo.toISOString();
+
+        let allData: Commit[] = [];
+        let page = 1;
+        let hasMore = true;
+
+        while (hasMore) {
+          const res = await fetch(
+            `https://api.github.com/repos/${REPO}/commits?per_page=100&page=${page}&since=${since}`
+          );
+          if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
+          const data: Commit[] = await res.json();
+          allData = [...allData, ...data];
+          hasMore = data.length === 100;
+          page++;
+        }
+
+        setAllCommits(allData);
         const grouped: Record<string, Commit[]> = {};
-        data.forEach(c => {
+        allData.forEach(c => {
           const date = new Date(c.commit.author.date).toLocaleDateString('en-US', {
             year: 'numeric', month: 'short', day: 'numeric',
           });
           (grouped[date] ||= []).push(c);
         });
         setCommits(Object.entries(grouped).map(([date, commits]) => ({ date, commits })));
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAllCommits();
   }, []);
 
   const handleSummarize = async () => {
