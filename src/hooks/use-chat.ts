@@ -439,10 +439,17 @@ export function useChat() {
 
         if (users.length === 0 && hasHadUsers) {
           setState(prev => ({ ...prev, messages: [] }));
-          // Clean up room password when room empties
+          // Clean up room password and stored images when room empties
           const currentRoom = roomCode;
           supabase.functions.invoke('room-password', {
             body: { action: 'delete', roomCode: currentRoom },
+          }).catch(() => {});
+          // Purge room images from storage
+          supabase.storage.from('chat-images').list(currentRoom).then(({ data: files }) => {
+            if (files && files.length > 0) {
+              const paths = files.map(f => `${currentRoom}/${f.name}`);
+              supabase.storage.from('chat-images').remove(paths).catch(() => {});
+            }
           }).catch(() => {});
         }
 
