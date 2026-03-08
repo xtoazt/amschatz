@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Bell, BellOff, LogOut, Plus, ChevronDown, ZoomIn, Users } from 'lucide-react';
+import { Send, Bell, BellOff, LogOut, Plus, ChevronDown, ZoomIn, Users, Lock } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
