@@ -77,15 +77,18 @@ const formatTime = (ts: number) =>
   new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 const messageVariants = {
-  hidden: { opacity: 0, y: 12, scale: 0.97 },
+  hidden: { opacity: 0, y: 16, scale: 0.96, filter: 'blur(2px)' },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
     scale: 1,
+    filter: 'blur(0px)',
     transition: {
-      duration: 0.25,
-      delay: Math.min(i * 0.03, 0.3),
-      ease: 'easeOut' as const,
+      type: 'spring',
+      stiffness: 380,
+      damping: 28,
+      mass: 0.8,
+      delay: Math.min(i * 0.02, 0.2),
     },
   }),
 };
