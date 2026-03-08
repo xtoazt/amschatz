@@ -40,7 +40,7 @@ export function ChatArea({
   messages,
   currentUser,
   roomCode,
-  notificationsEnabled,
+  users,
   typingUsers,
   frozen,
   frozenBy,
