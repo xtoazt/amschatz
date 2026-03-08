@@ -231,8 +231,7 @@ export function useChat() {
 
         if (notificationsRef.current && document.hidden) {
           let body: string;
-          const isGifUrl = (url?: string) => url && (url.includes('tenor.com') || url.includes('giphy.com') || url.includes('/gif'));
-          if (msg.imageUrl && isGifUrl(msg.imageUrl)) {
+          if (msg.isGif) {
             body = `${msg.username} sent a GIF`;
           } else if (msg.imageUrl) {
             body = `${msg.username} sent a photo 📷`;

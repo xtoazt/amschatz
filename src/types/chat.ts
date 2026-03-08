@@ -15,6 +15,7 @@ export interface ChatMessage {
   deleted?: boolean;
   imageUrl?: string;
   imageExpiry?: number;
+  isGif?: boolean;
   // File attachment properties
   fileUrl?: string;
   fileName?: string;
