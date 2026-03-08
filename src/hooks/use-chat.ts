@@ -704,6 +704,6 @@ export function useChat() {
   return {
     state, joinRoom, leaveRoom, sendMessage, sendTyping, sendGif,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
-    checkUsernameAvailable, broadcastScreenshot, kickUser, reactToMessage,
+    broadcastScreenshot, kickUser, reactToMessage,
   };
 }
