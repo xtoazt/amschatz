@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bell, BellOff, LogOut, Plus, Check, CheckCheck, ChevronDown, X, Download, FileText } from 'lucide-react';
+import { Send, Bell, BellOff, LogOut, Plus, Check, CheckCheck, ChevronDown, X, Download, FileText, FileArchive, FileType, File } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GifPicker } from '@/components/GifPicker';
 import { FullscreenImageViewer } from '@/components/FullscreenImageViewer';
@@ -28,6 +28,16 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// File type icon helper
+function getFileIcon(mimeType?: string, fileName?: string) {
+  const ext = fileName?.split('.').pop()?.toLowerCase();
+  if (mimeType === 'application/pdf' || ext === 'pdf') return FileText;
+  if (mimeType?.includes('zip') || ext === 'zip' || ext === 'rar' || ext === '7z') return FileArchive;
+  if (mimeType?.includes('word') || ext === 'doc' || ext === 'docx') return FileType;
+  if (mimeType === 'text/plain' || ext === 'txt') return FileText;
+  return File;
+}
+
 // File Inspector Modal Component
 interface FileInspectorProps {
   fileName: string;
@@ -37,6 +47,7 @@ interface FileInspectorProps {
 }
 
 function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorProps) {
+  const IconComponent = getFileIcon(undefined, fileName);
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -76,7 +87,7 @@ function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorPr
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-10 h-10 border border-foreground flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-foreground" />
+              <IconComponent className="w-5 h-5 text-foreground" />
             </div>
             <div className="space-y-1 min-w-0 flex-1">
               <p className="text-sm font-mono text-foreground break-all">
@@ -454,18 +465,25 @@ export function ChatArea({
                     <span className="text-[11px] italic text-muted-foreground">Image expired</span>
                   )}
                   {/* File attachment (non-image) */}
-                  {hasFile && !isFileImageOrGif && (
-                    <button
-                      onClick={() => setInspectedFile({ name: msg.fileName!, size: msg.fileSize, url: msg.fileUrl! })}
-                      className="flex items-center gap-2 p-2.5 bg-transparent border border-foreground hover:bg-foreground/10 transition-all active:scale-[0.95] mb-1 w-full"
-                    >
-                      <FileText className="w-4 h-4 text-foreground shrink-0" />
-                      <span className="text-xs font-mono text-foreground truncate flex-1 text-left">{msg.fileName}</span>
-                      {msg.fileSize !== undefined && (
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">{formatFileSize(msg.fileSize)}</span>
-                      )}
-                    </button>
-                  )}
+                  {hasFile && !isFileImageOrGif && (() => {
+                    const IconComponent = getFileIcon(msg.fileMimeType, msg.fileName);
+                    return (
+                      <button
+                        onClick={() => setInspectedFile({ name: msg.fileName!, size: msg.fileSize, url: msg.fileUrl! })}
+                        className={`flex items-center gap-2 p-2.5 border transition-all active:scale-[0.95] mb-1 w-full ${
+                          isOwn
+                            ? 'border-message-own-foreground/30 hover:bg-message-own-foreground/10'
+                            : 'border-message-other-foreground/30 hover:bg-message-other-foreground/10'
+                        }`}
+                      >
+                        <IconComponent className={`w-4 h-4 shrink-0 ${isOwn ? 'text-message-own-foreground' : 'text-message-other-foreground'}`} />
+                        <span className={`text-xs font-mono truncate flex-1 text-left ${isOwn ? 'text-message-own-foreground' : 'text-message-other-foreground'}`}>{msg.fileName}</span>
+                        {msg.fileSize !== undefined && (
+                          <span className={`text-[10px] font-mono shrink-0 ${isOwn ? 'text-message-own-foreground/60' : 'text-message-other-foreground/60'}`}>{formatFileSize(msg.fileSize)}</span>
+                        )}
+                      </button>
+                    );
+                  })()}
                   {msg.text}
                 </div>
               )}
