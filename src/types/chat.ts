@@ -1,3 +1,9 @@
+export interface ReplyTo {
+  id: string;
+  username: string;
+  text: string;
+}
+
 export interface ChatMessage {
   id: string;
   username: string;
@@ -14,6 +20,10 @@ export interface ChatMessage {
   fileName?: string;
   fileSize?: number;
   fileMimeType?: string;
+  // Reply
+  replyTo?: ReplyTo;
+  // Reactions: emoji → list of usernames
+  reactions?: Record<string, string[]>;
 }
 
 export interface RoomUser {

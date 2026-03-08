@@ -3,9 +3,10 @@ import { Send, Bell, BellOff, LogOut, Plus, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GifPicker } from '@/components/GifPicker';
 import { FullscreenImageViewer } from '@/components/FullscreenImageViewer';
-import { ChatMessage } from '@/types/chat';
+import { ChatMessage, ReplyTo } from '@/types/chat';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { FileInspector, InspectedFile } from '@/components/chat/FileInspector';
+import { ReplyPreview } from '@/components/chat/ReplyPreview';
 import { ACCEPTED_FILE_TYPES } from '@/components/chat/FileHelpers';
 
 interface ChatAreaProps {
@@ -17,7 +18,7 @@ interface ChatAreaProps {
   frozen: boolean;
   frozenBy: string | null;
   nuking: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string, replyTo?: ReplyTo) => void;
   onTyping: () => void;
   onToggleNotifications: () => void;
   onLeave: () => void;
@@ -25,6 +26,7 @@ interface ChatAreaProps {
   onUnsend: (messageId: string) => void;
   onSendImage: (file: File, onProgress?: (p: number) => void) => void;
   onSendGif: (url: string) => void;
+  onReact: (messageId: string, emoji: string) => void;
 }
 
 export function ChatArea({
@@ -44,6 +46,7 @@ export function ChatArea({
   onUnsend,
   onSendImage,
   onSendGif,
+  onReact,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,6 +61,8 @@ export function ChatArea({
   const [isRoomNameHovered, setIsRoomNameHovered] = useState(false);
   const [notificationJiggle, setNotificationJiggle] = useState(false);
   const [inspectedFile, setInspectedFile] = useState<InspectedFile | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -65,6 +70,12 @@ export function ChatArea({
   const dragCounter = useRef(0);
   const lastMessageCountRef = useRef(messages.length);
   const userScrolledRef = useRef(false);
+
+  // Shared 1-second ticker for self-destruct timers
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const checkIfScrolledUp = useCallback(() => {
     if (!scrollContainerRef.current) return false;
@@ -90,6 +101,15 @@ export function ChatArea({
     userScrolledRef.current = false;
   }, []);
 
+  const scrollToMessage = useCallback((id: string) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('bg-muted/30');
+      setTimeout(() => el.classList.remove('bg-muted/30'), 1500);
+    }
+  }, []);
+
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -112,8 +132,9 @@ export function ChatArea({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      onSend(input);
+      onSend(input, replyingTo || undefined);
       setInput('');
+      setReplyingTo(null);
     }
   };
 
@@ -165,7 +186,6 @@ export function ChatArea({
 
   const isInputDisabled = frozen && frozenBy !== currentUser;
 
-  // Memoize masked room name
   const maskedRoomName = useMemo(() => '*'.repeat(roomCode.length || 8), [roomCode]);
 
   return (
@@ -226,10 +246,14 @@ export function ChatArea({
               msg={msg}
               isOwn={msg.username === currentUser}
               index={i}
+              currentTime={currentTime}
               onImageClick={setFullscreenImage}
               onInspectFile={setInspectedFile}
               onEdit={handleStartEdit}
               onUnsend={onUnsend}
+              onReply={setReplyingTo}
+              onReact={onReact}
+              onScrollToMessage={scrollToMessage}
               editingId={editingId}
               editText={editText}
               onEditTextChange={setEditText}
@@ -243,7 +267,6 @@ export function ChatArea({
         <AnimatePresence>
           {nuking && (
             <>
-              {/* Particle shredder effect */}
               <motion.div
                 initial={{ opacity: 1 }}
                 animate={{ opacity: 0 }}
@@ -276,7 +299,6 @@ export function ChatArea({
                 ))}
               </motion.div>
 
-              {/* ROOM NEUTRALIZED text */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -336,6 +358,11 @@ export function ChatArea({
         className="hidden"
         onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileUpload(file); e.target.value = ''; }}
       />
+
+      {/* Reply preview bar */}
+      {replyingTo && (
+        <ReplyPreview replyTo={replyingTo} onCancel={() => setReplyingTo(null)} />
+      )}
 
       {/* Input bar */}
       <form onSubmit={handleSubmit} className="p-3 shrink-0 relative">

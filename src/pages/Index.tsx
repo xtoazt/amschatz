@@ -11,7 +11,7 @@ const Index = () => {
   const {
     state, joinRoom, leaveRoom, sendMessage, sendTyping,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage, sendGif,
-    checkUsernameAvailable, broadcastScreenshot,
+    checkUsernameAvailable, broadcastScreenshot, kickUser, reactToMessage,
   } = useChat();
   const [adminOpen, setAdminOpen] = useState(false);
   const [authOverlay, setAuthOverlay] = useState(false);
@@ -19,7 +19,7 @@ const Index = () => {
 
   useScreenshotDetect(broadcastScreenshot, state.isJoined);
 
-  const handleSend = (text: string) => {
+  const handleSend = (text: string, replyTo?: { id: string; username: string; text: string }) => {
     if (text.trim() === '/admin') {
       if (sessionStorage.getItem('is_admin') === 'true') {
         setAdminOpen(true);
@@ -28,17 +28,15 @@ const Index = () => {
       }
       return;
     }
-    sendMessage(text);
+    sendMessage(text, replyTo);
   };
 
   const handleNuke = useCallback(() => {
     setAdminOpen(false);
     setNuking(true);
-    // Delay the actual data wipe so the animation plays over existing messages
     setTimeout(() => {
       nukeRoom();
     }, 800);
-    // Clear nuking state after full animation completes
     setTimeout(() => {
       setNuking(false);
     }, 2500);
@@ -84,6 +82,7 @@ const Index = () => {
         onUnsend={unsendMessage}
         onSendImage={sendImage}
         onSendGif={sendGif}
+        onReact={reactToMessage}
       />
       {authOverlay && (
         <AdminAuthOverlay
@@ -94,11 +93,13 @@ const Index = () => {
       {adminOpen && (
         <AdminPanel
           messages={state.messages}
+          users={state.users}
           userCount={state.users.length}
           frozen={state.frozen}
           onNuke={handleNuke}
           onFreeze={freezeChat}
           onAnnounce={sendAnnouncement}
+          onKick={kickUser}
           onClose={() => setAdminOpen(false)}
         />
       )}

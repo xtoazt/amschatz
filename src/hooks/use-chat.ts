@@ -1,11 +1,21 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ChatMessage, RoomUser, ChatState } from '@/types/chat';
+import { ChatMessage, RoomUser, ChatState, ReplyTo } from '@/types/chat';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { z } from 'zod';
 
 const generateId = () => Math.random().toString(36).substring(2, 12);
 const TEN_MINUTES = 10 * 60 * 1000;
+
+// Rate limiting config
+const RATE_LIMIT_COUNT = 5;
+const RATE_LIMIT_WINDOW = 3000; // 3 seconds
+
+const ReplyToSchema = z.object({
+  id: z.string().max(50),
+  username: z.string().max(20),
+  text: z.string().max(200),
+}).optional();
 
 const ChatMessageSchema = z.object({
   id: z.string().max(50),
@@ -18,11 +28,12 @@ const ChatMessageSchema = z.object({
   deleted: z.boolean().optional(),
   imageUrl: z.string().url().max(2000).optional(),
   imageExpiry: z.number().optional(),
-  // File attachment fields
   fileUrl: z.string().url().max(2000).optional(),
   fileName: z.string().max(255).optional(),
   fileSize: z.number().optional(),
   fileMimeType: z.string().max(100).optional(),
+  replyTo: ReplyToSchema,
+  reactions: z.record(z.array(z.string().max(20))).optional(),
 });
 
 const TypingSchema = z.object({ username: z.string().max(20) });
@@ -32,6 +43,8 @@ const FreezeSchema = z.object({ frozen: z.boolean(), by: z.string().max(20) });
 const EditSchema = z.object({ messageId: z.string().max(50), newText: z.string().max(5000) });
 const UnsendSchema = z.object({ messageId: z.string().max(50) });
 const ScreenshotSchema = z.object({ username: z.string().max(20) });
+const KickSchema = z.object({ username: z.string().max(20) });
+const ReactionSchema = z.object({ messageId: z.string().max(50), emoji: z.string().max(4), username: z.string().max(20) });
 
 function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
   const result = schema.safeParse(data);
@@ -65,6 +78,7 @@ export function useChat() {
   const usernameRef = useRef(state.username);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const sendTimestamps = useRef<number[]>([]);
 
   useEffect(() => { notificationsRef.current = state.notificationsEnabled; }, [state.notificationsEnabled]);
   useEffect(() => { usernameRef.current = state.username; }, [state.username]);
@@ -75,6 +89,28 @@ export function useChat() {
         supabase.removeChannel(channelRef.current);
       }
     };
+  }, []);
+
+  // Rate limiter check
+  const checkRateLimit = useCallback((): boolean => {
+    const now = Date.now();
+    sendTimestamps.current = sendTimestamps.current.filter(t => now - t < RATE_LIMIT_WINDOW);
+    if (sendTimestamps.current.length >= RATE_LIMIT_COUNT) {
+      // Inject local system message
+      setState(prev => ({
+        ...prev,
+        messages: [...prev.messages, {
+          id: generateId(),
+          username: 'system',
+          text: '[SYSTEM]: RATE LIMITED — SLOW DOWN',
+          timestamp: Date.now(),
+          type: 'system',
+        }],
+      }));
+      return false;
+    }
+    sendTimestamps.current.push(now);
+    return true;
   }, []);
 
   // Window focus listener: mark all unread messages as read
@@ -88,7 +124,6 @@ export function useChat() {
 
         if (unreadIds.length === 0) return prev;
 
-        // Broadcast bulk read
         channelRef.current?.send({
           type: 'broadcast',
           event: 'bulk-read',
@@ -108,10 +143,6 @@ export function useChat() {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  /**
-   * Check if a username is available in the room before joining.
-   * Temporarily subscribes to the channel's presence to peek at current users.
-   */
   const checkUsernameAvailable = useCallback(async (username: string, roomCode: string): Promise<boolean> => {
     return new Promise((resolve) => {
       const peekChannel = supabase.channel(`room:${roomCode}:peek-${generateId()}`, {
@@ -120,7 +151,7 @@ export function useChat() {
 
       const timeout = setTimeout(() => {
         supabase.removeChannel(peekChannel);
-        resolve(true); // On timeout, allow join (fail-open)
+        resolve(true);
       }, 4000);
 
       peekChannel.on('presence', { event: 'sync' }, () => {
@@ -176,7 +207,6 @@ export function useChat() {
         messages: [...prev.messages, { ...msg, status: isFocused ? 'read' : 'delivered' } as ChatMessage],
       }));
 
-      // If tab is focused, immediately send read receipt
       if (isFocused && channelRef.current) {
         channelRef.current.send({ type: 'broadcast', event: 'read', payload: { messageId: msg.id, reader: usernameRef.current } });
       }
@@ -286,6 +316,72 @@ export function useChat() {
       setState(prev => ({ ...prev, messages: [...prev.messages, alertMsg] }));
     });
 
+    // Kick event
+    channel.on('broadcast', { event: 'kick' }, (payload) => {
+      const parsed = safeParse(KickSchema, payload.payload);
+      if (!parsed) return;
+      if (parsed.username === usernameRef.current) {
+        // We are being kicked
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+        setState(prev => ({
+          ...prev,
+          isJoined: false,
+          messages: [],
+          users: [],
+          username: '',
+          roomCode: '',
+          typingUsers: [],
+          frozen: false,
+          frozenBy: null,
+        }));
+        // Show alert after state reset
+        setTimeout(() => {
+          alert('[SYSTEM]: YOU HAVE BEEN REMOVED');
+        }, 100);
+      } else {
+        // Someone else was kicked — show system message
+        setState(prev => ({
+          ...prev,
+          messages: [...prev.messages, {
+            id: generateId(),
+            username: 'system',
+            text: `${parsed.username} was removed.`,
+            timestamp: Date.now(),
+            type: 'system',
+          }],
+        }));
+      }
+    });
+
+    // Reaction event
+    channel.on('broadcast', { event: 'reaction' }, (payload) => {
+      const parsed = safeParse(ReactionSchema, payload.payload);
+      if (!parsed) return;
+      setState(prev => ({
+        ...prev,
+        messages: prev.messages.map(m => {
+          if (m.id !== parsed.messageId) return m;
+          const reactions = { ...(m.reactions || {}) };
+          const users = [...(reactions[parsed.emoji] || [])];
+          const idx = users.indexOf(parsed.username);
+          if (idx >= 0) {
+            users.splice(idx, 1);
+            if (users.length === 0) {
+              delete reactions[parsed.emoji];
+            } else {
+              reactions[parsed.emoji] = users;
+            }
+          } else {
+            reactions[parsed.emoji] = [...users, parsed.username];
+          }
+          return { ...m, reactions: Object.keys(reactions).length > 0 ? reactions : undefined };
+        }),
+      }));
+    });
+
     channel.on('presence', { event: 'sync' }, () => {
       const presenceState = channel.presenceState();
       const users: RoomUser[] = Object.keys(presenceState).map(key => ({
@@ -336,8 +432,9 @@ export function useChat() {
     }));
   }, []);
 
-  const sendMessage = useCallback((text: string) => {
+  const sendMessage = useCallback((text: string, replyTo?: ReplyTo) => {
     if (!text.trim()) return;
+    if (!checkRateLimit()) return;
 
     const msg: ChatMessage = {
       id: generateId(),
@@ -346,6 +443,7 @@ export function useChat() {
       timestamp: Date.now(),
       type: 'message',
       status: 'sent',
+      ...(replyTo ? { replyTo } : {}),
     };
 
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
@@ -353,7 +451,7 @@ export function useChat() {
     if (channelRef.current) {
       channelRef.current.send({ type: 'broadcast', event: 'message', payload: msg });
     }
-  }, []);
+  }, [checkRateLimit]);
 
   const sendTyping = useCallback(() => {
     if (channelRef.current) {
@@ -364,6 +462,8 @@ export function useChat() {
   }, []);
 
   const sendGif = useCallback((gifUrl: string) => {
+    if (!checkRateLimit()) return;
+
     const msg: ChatMessage = {
       id: generateId(),
       username: usernameRef.current,
@@ -380,11 +480,10 @@ export function useChat() {
     if (channelRef.current) {
       channelRef.current.send({ type: 'broadcast', event: 'message', payload: msg });
     }
-  }, []);
+  }, [checkRateLimit]);
 
   const toggleNotifications = useCallback(async () => {
     if (!state.notificationsEnabled) {
-      // Always enable the preference; request permission separately
       localStorage.setItem('chat_notif_pref', 'true');
       setState(prev => ({ ...prev, notificationsEnabled: true }));
       if ('Notification' in window && Notification.permission === 'default') {
@@ -457,11 +556,11 @@ export function useChat() {
   }, []);
 
   const sendImage = useCallback(async (file: File, onProgress?: (p: number) => void) => {
+    if (!checkRateLimit()) return;
+
     const ext = file.name.split('.').pop() || 'png';
     const storedFileName = `${generateId()}_${Date.now()}.${ext}`;
     const expiry = Date.now() + TEN_MINUTES;
-    
-    // Determine if this is an image or a file
     const isImage = file.type.startsWith('image/');
 
     onProgress?.(10);
@@ -490,7 +589,6 @@ export function useChat() {
       timestamp: Date.now(),
       type: 'message',
       status: 'sent',
-      // For images, use imageUrl; for files, use fileUrl with metadata
       ...(isImage
         ? {
             imageUrl: urlData.publicUrl,
@@ -504,15 +602,6 @@ export function useChat() {
           }),
     };
 
-    console.log('[v0] Sending file message:', { 
-      isImage, 
-      fileType: file.type, 
-      fileName: file.name,
-      msgFileUrl: msg.fileUrl,
-      msgFileName: msg.fileName,
-      msgFileMimeType: msg.fileMimeType
-    });
-
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
 
     if (channelRef.current) {
@@ -520,13 +609,12 @@ export function useChat() {
     }
 
     onProgress?.(100);
-  }, []);
+  }, [checkRateLimit]);
 
   const broadcastScreenshot = useCallback(() => {
     if (channelRef.current) {
       channelRef.current.send({ type: 'broadcast', event: 'screenshot', payload: { username: usernameRef.current } });
     }
-    // Also show locally
     setState(prev => ({
       ...prev,
       messages: [...prev.messages, {
@@ -539,9 +627,55 @@ export function useChat() {
     }));
   }, []);
 
+  const kickUser = useCallback((username: string) => {
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'kick', payload: { username } });
+    }
+    // Also add local system message
+    setState(prev => ({
+      ...prev,
+      messages: [...prev.messages, {
+        id: generateId(),
+        username: 'system',
+        text: `${username} was removed.`,
+        timestamp: Date.now(),
+        type: 'system',
+      }],
+    }));
+  }, []);
+
+  const reactToMessage = useCallback((messageId: string, emoji: string) => {
+    const username = usernameRef.current;
+    // Update locally
+    setState(prev => ({
+      ...prev,
+      messages: prev.messages.map(m => {
+        if (m.id !== messageId) return m;
+        const reactions = { ...(m.reactions || {}) };
+        const users = [...(reactions[emoji] || [])];
+        const idx = users.indexOf(username);
+        if (idx >= 0) {
+          users.splice(idx, 1);
+          if (users.length === 0) {
+            delete reactions[emoji];
+          } else {
+            reactions[emoji] = users;
+          }
+        } else {
+          reactions[emoji] = [...users, username];
+        }
+        return { ...m, reactions: Object.keys(reactions).length > 0 ? reactions : undefined };
+      }),
+    }));
+    // Broadcast
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'reaction', payload: { messageId, emoji, username } });
+    }
+  }, []);
+
   return {
     state, joinRoom, leaveRoom, sendMessage, sendTyping, sendGif,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
-    checkUsernameAvailable, broadcastScreenshot,
+    checkUsernameAvailable, broadcastScreenshot, kickUser, reactToMessage,
   };
 }

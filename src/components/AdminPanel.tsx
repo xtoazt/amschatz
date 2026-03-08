@@ -1,28 +1,32 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Eye, Lock, Megaphone, Users } from 'lucide-react';
-import { ChatMessage } from '@/types/chat';
+import { X, Trash2, Eye, Lock, Megaphone, Users, UserX } from 'lucide-react';
+import { ChatMessage, RoomUser } from '@/types/chat';
 
 interface AdminPanelProps {
   messages: ChatMessage[];
+  users: RoomUser[];
   userCount: number;
   frozen: boolean;
   onNuke: () => void;
   onFreeze: () => void;
   onAnnounce: (text: string) => void;
+  onKick: (username: string) => void;
   onClose: () => void;
 }
 
 export function AdminPanel({
   messages,
+  users,
   userCount,
   frozen,
   onNuke,
   onFreeze,
   onAnnounce,
+  onKick,
   onClose,
 }: AdminPanelProps) {
-  const [view, setView] = useState<'main' | 'logs'>('main');
+  const [view, setView] = useState<'main' | 'logs' | 'kick'>('main');
   const [announcement, setAnnouncement] = useState('');
 
   const handleAnnounce = () => {
@@ -72,6 +76,42 @@ export function AdminPanel({
               {messages.filter(m => m.type === 'message').length === 0 && (
                 <span className="text-[11px] font-mono text-muted-foreground">No messages.</span>
               )}
+            </div>
+          </motion.div>
+        ) : view === 'kick' ? (
+          <motion.div
+            key="kick"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.2 }}
+            className="w-full max-w-xs border border-foreground rounded-2xl bg-background overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-foreground/10">
+              <span className="text-xs font-mono font-medium text-foreground tracking-wider uppercase">Kick User</span>
+              <button
+                onClick={() => setView('main')}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-background hover:bg-foreground transition-colors active:scale-[0.95]"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-1.5">
+              {users.length === 0 && (
+                <span className="text-[11px] font-mono text-muted-foreground">No users online.</span>
+              )}
+              {users.map(u => (
+                <motion.button
+                  key={u.username}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { onKick(u.username); setView('main'); }}
+                  className="w-full flex items-center gap-2 text-sm font-mono text-foreground py-2 px-3 rounded-xl border border-foreground/10 hover:border-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  <UserX className="w-3.5 h-3.5" />
+                  {u.username}
+                </motion.button>
+              ))}
             </div>
           </motion.div>
         ) : (
@@ -128,6 +168,15 @@ export function AdminPanel({
             >
               <Lock className="w-4 h-4" />
               {frozen ? 'Unfreeze Chat' : 'Freeze Chat'}
+            </motion.button>
+
+            <motion.button
+              onClick={() => setView('kick')}
+              whileTap={{ scale: 0.95 }}
+              className="w-full flex items-center gap-2 border border-foreground/30 text-foreground text-sm font-mono py-2.5 px-3 rounded-xl hover:border-foreground transition-colors"
+            >
+              <UserX className="w-4 h-4" />
+              Kick User
             </motion.button>
 
             {/* Announcement */}

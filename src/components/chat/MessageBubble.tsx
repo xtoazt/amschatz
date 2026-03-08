@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { motion } from 'framer-motion';
+import { memo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessage } from '@/types/chat';
 import {
   ContextMenu,
@@ -11,17 +11,23 @@ import { StatusIcon } from './StatusIcon';
 import { ImageAttachment } from './ImageAttachment';
 import { FileAttachment } from './FileAttachment';
 import { isImageOrGif, isImageExpired } from './FileHelpers';
+import { SelfDestructTimer } from './SelfDestructTimer';
+import { ReactionPicker } from './ReactionPicker';
 import type { InspectedFile } from './FileInspector';
+import type { ReplyTo } from '@/types/chat';
 
 interface MessageBubbleProps {
   msg: ChatMessage;
   isOwn: boolean;
-  // currentUser kept for potential future use
   index: number;
+  currentTime: number;
   onImageClick: (url: string) => void;
   onInspectFile: (file: InspectedFile) => void;
   onEdit: (id: string, text: string) => void;
   onUnsend: (id: string) => void;
+  onReply: (replyTo: ReplyTo) => void;
+  onReact: (messageId: string, emoji: string) => void;
+  onScrollToMessage?: (id: string) => void;
   editingId: string | null;
   editText: string;
   onEditTextChange: (text: string) => void;
@@ -49,18 +55,23 @@ const messageVariants = {
 export const MessageBubble = memo(function MessageBubble({
   msg,
   isOwn,
-  
   index,
+  currentTime,
   onImageClick,
   onInspectFile,
   onEdit,
   onUnsend,
+  onReply,
+  onReact,
+  onScrollToMessage,
   editingId,
   editText,
   onEditTextChange,
   onEditSubmit,
   onEditCancel,
 }: MessageBubbleProps) {
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+
   // System messages
   if (msg.type === 'system') {
     return (
@@ -112,12 +123,31 @@ export const MessageBubble = memo(function MessageBubble({
   const imageExpired = isImageExpired(msg.imageExpiry);
   const hasFile = !!(msg.fileUrl && msg.fileName);
   const isFileImageOrGif = msg.fileUrl ? isImageOrGif(msg.fileUrl, msg.fileMimeType) : true;
+  const reactions = msg.reactions || {};
+  const hasReactions = Object.keys(reactions).length > 0;
+
+  const handleReact = (emoji: string) => {
+    onReact(msg.id, emoji);
+    setShowReactionPicker(false);
+  };
 
   const bubble = (
     <div className="max-w-[75%] space-y-0.5">
       {!isOwn && (
         <span className="text-[11px] text-muted-foreground ml-1">{msg.username}</span>
       )}
+
+      {/* Reply quote */}
+      {msg.replyTo && (
+        <div
+          className="ml-1 mb-0.5 border-l-2 border-muted-foreground/30 pl-2 py-0.5 cursor-pointer"
+          onClick={() => onScrollToMessage?.(msg.replyTo!.id)}
+        >
+          <span className="text-[10px] font-mono text-muted-foreground font-medium">{msg.replyTo.username}</span>
+          <p className="text-[10px] text-muted-foreground/60 truncate max-w-[200px]">{msg.replyTo.text || '[media]'}</p>
+        </div>
+      )}
+
       {editingId === msg.id ? (
         <div className="flex gap-1">
           <input
@@ -159,44 +189,72 @@ export const MessageBubble = memo(function MessageBubble({
           {msg.text}
         </div>
       )}
+
+      {/* Reactions */}
+      {hasReactions && (
+        <div className="flex flex-wrap gap-1 ml-1 mt-0.5">
+          {Object.entries(reactions).map(([emoji, users]) => (
+            <button
+              key={emoji}
+              onClick={() => onReact(msg.id, emoji)}
+              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] border transition-colors ${
+                users.includes(msg.username)
+                  ? 'border-foreground/30 bg-muted'
+                  : 'border-border bg-card hover:border-foreground/20'
+              }`}
+            >
+              <span>{emoji}</span>
+              <span className="text-muted-foreground font-mono text-[10px]">{users.length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className={`flex items-center gap-1 ${isOwn ? 'justify-end mr-1' : 'ml-1'}`}>
         <span className="text-[10px] text-muted-foreground">{formatTime(msg.timestamp)}</span>
         {msg.edited && <span className="text-[10px] text-muted-foreground">· edited</span>}
         {isOwn && msg.status && <StatusIcon status={msg.status} />}
+        <SelfDestructTimer timestamp={msg.timestamp} currentTime={currentTime} />
       </div>
+
+      {/* Inline reaction picker */}
+      <AnimatePresence>
+        {showReactionPicker && (
+          <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+            <ReactionPicker onSelect={handleReact} />
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 
-  if (isOwn) {
-    return (
-      <motion.div
-        variants={messageVariants}
-        initial="hidden"
-        animate="visible"
-        custom={index}
-      >
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <div className="flex justify-end">{bubble}</div>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem onSelect={() => onEdit(msg.id, msg.text)}>Edit</ContextMenuItem>
-            <ContextMenuItem onSelect={() => onUnsend(msg.id)}>Unsend</ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-      </motion.div>
-    );
-  }
+  const contextMenuItems = (
+    <ContextMenuContent>
+      {isOwn && <ContextMenuItem onSelect={() => onEdit(msg.id, msg.text)}>Edit</ContextMenuItem>}
+      {isOwn && <ContextMenuItem onSelect={() => onUnsend(msg.id)}>Unsend</ContextMenuItem>}
+      <ContextMenuItem onSelect={() => onReply({ id: msg.id, username: msg.username, text: msg.text.slice(0, 100) })}>
+        Reply
+      </ContextMenuItem>
+      <ContextMenuItem onSelect={() => setShowReactionPicker(prev => !prev)}>
+        React
+      </ContextMenuItem>
+    </ContextMenuContent>
+  );
 
   return (
     <motion.div
+      id={`msg-${msg.id}`}
       variants={messageVariants}
       initial="hidden"
       animate="visible"
       custom={index}
-      className="flex justify-start"
     >
-      {bubble}
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>{bubble}</div>
+        </ContextMenuTrigger>
+        {contextMenuItems}
+      </ContextMenu>
     </motion.div>
   );
 });
