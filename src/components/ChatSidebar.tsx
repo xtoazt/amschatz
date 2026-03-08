@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Users, LogOut } from 'lucide-react';
 import { RoomUser } from '@/types/chat';
 
@@ -8,11 +9,20 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ roomCode, users, onLeave }: ChatSidebarProps) {
+  const [isRoomNameHovered, setIsRoomNameHovered] = useState(false);
+  
   return (
     <div className="w-56 h-full bg-card flex flex-col shrink-0 hidden md:flex">
       <div className="p-4">
         <span className="text-xs font-medium text-muted-foreground">Room</span>
-        <p className="text-sm font-medium text-foreground truncate mt-0.5">{roomCode}</p>
+        <p 
+          className="text-sm font-medium text-foreground truncate mt-0.5 font-mono cursor-default select-none transition-all duration-200"
+          onMouseEnter={() => setIsRoomNameHovered(true)}
+          onMouseLeave={() => setIsRoomNameHovered(false)}
+          title="Hover to reveal"
+        >
+          {isRoomNameHovered ? roomCode : '*'.repeat(roomCode.length || 8)}
+        </p>
       </div>
 
       <div className="flex-1 p-4 overflow-y-auto scrollbar-thin">
@@ -33,7 +43,7 @@ export function ChatSidebar({ roomCode, users, onLeave }: ChatSidebarProps) {
       <div className="p-4">
         <button
           onClick={onLeave}
-          className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 rounded-md hover:bg-muted"
+          className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] py-2 rounded-md hover:bg-muted"
         >
           <LogOut className="w-4 h-4" />
           Leave
