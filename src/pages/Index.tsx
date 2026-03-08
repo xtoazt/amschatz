@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useChat } from '@/hooks/use-chat';
 import { useScreenshotDetect } from '@/hooks/use-screenshot-detect';
 import { JoinScreen } from '@/components/JoinScreen';
@@ -26,6 +26,11 @@ const Index = () => {
     setUiScale(s);
     localStorage.setItem('v0id-ui-scale', String(s));
   }, []);
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${uiScale}%`;
+    return () => { document.documentElement.style.fontSize = ''; };
+  }, [uiScale]);
 
   useScreenshotDetect(broadcastScreenshot, state.isJoined);
 
@@ -63,7 +68,7 @@ const Index = () => {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden" style={{ zoom: uiScale / 100 }}>
+    <div className="flex h-screen w-full overflow-hidden">
       <ChatSidebar
         roomCode={state.roomCode}
         users={state.users}
