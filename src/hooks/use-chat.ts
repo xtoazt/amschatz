@@ -79,23 +79,24 @@ function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
   return result.data;
 }
 
+const DEFAULT_ROOM_STATE: Omit<ChatState, 'notificationsEnabled'> = {
+  username: '',
+  roomCode: '',
+  messages: [],
+  users: [],
+  isJoined: false,
+  typingUsers: [],
+  frozen: false,
+  frozenBy: null,
+  isPasswordProtected: false,
+};
+
 export function useChat() {
   const [state, setState] = useState<ChatState>(() => {
     const savedNotif = typeof window !== 'undefined'
       ? localStorage.getItem('chat_notif_pref') === 'true'
       : false;
-    return {
-      username: '',
-      roomCode: '',
-      messages: [],
-      users: [],
-      isJoined: false,
-      notificationsEnabled: savedNotif,
-      typingUsers: [],
-      frozen: false,
-      frozenBy: null,
-      isPasswordProtected: false,
-    };
+    return { ...DEFAULT_ROOM_STATE, notificationsEnabled: savedNotif };
   });
 
   const channelRef = useRef<RealtimeChannel | null>(null);

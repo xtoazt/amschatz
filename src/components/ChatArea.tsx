@@ -133,19 +133,15 @@ export function ChatArea({
     }
     const lastMsg = messages[messages.length - 1];
     if (lastMsg.id !== lastMessageIdRef.current) {
+      const oldIdx = lastMessageIdRef.current
+        ? messages.findIndex(m => m.id === lastMessageIdRef.current)
+        : -1;
       // New message(s) arrived
       if (checkIfScrolledUp() && userScrolledRef.current) {
         if (!unreadMarkerId) {
-          // Find the first message after the old last known
-          const oldIdx = lastMessageIdRef.current
-            ? messages.findIndex(m => m.id === lastMessageIdRef.current)
-            : -1;
           const firstNewMsg = messages[oldIdx + 1];
           if (firstNewMsg) setUnreadMarkerId(firstNewMsg.id);
         }
-        const oldIdx = lastMessageIdRef.current
-          ? messages.findIndex(m => m.id === lastMessageIdRef.current)
-          : -1;
         const newMsgCount = messages.length - (oldIdx + 1);
         if (newMsgCount > 0) setUnreadCount(prev => prev + newMsgCount);
       } else {

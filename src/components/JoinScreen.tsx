@@ -130,28 +130,25 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
 
     const hasActiveUsers = await checkPresence(room);
 
-    if (roomHasPassword && !hasActiveUsers) {
-      // Stale password, clean up
-      await supabase.functions.invoke('room-password', {
-        body: { action: 'delete', roomCode: room },
-      });
-      // Room doesn't exist anymore
+    const showRoomNotFound = () => {
       setError('ROOM NOT FOUND');
       toast.error('ROOM NOT FOUND', {
         description: 'No active room with this code exists. Try creating one instead.',
         duration: 4000,
       });
       setCheckingRoom(false);
+    };
+
+    if (roomHasPassword && !hasActiveUsers) {
+      await supabase.functions.invoke('room-password', {
+        body: { action: 'delete', roomCode: room },
+      });
+      showRoomNotFound();
       return;
     }
 
     if (!hasActiveUsers && !roomHasPassword) {
-      setError('ROOM NOT FOUND');
-      toast.error('ROOM NOT FOUND', {
-        description: 'No active room with this code exists. Try creating one instead.',
-        duration: 4000,
-      });
-      setCheckingRoom(false);
+      showRoomNotFound();
       return;
     }
 
