@@ -185,7 +185,7 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
           all messages self-destruct after 10 minutes. no logs. no history.
         </motion.p>
         <motion.div
-          className="text-center"
+          className="flex flex-col items-center gap-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 1.0 }}
@@ -193,13 +193,6 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
           <Link to="/changelog" className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/80 hover:text-foreground font-mono transition-colors">
             <GitCommit className="w-3 h-3" /> changelog
           </Link>
-        </motion.div>
-        <motion.div
-          className="text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 1.1 }}
-        >
           <Link to="/features" className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/80 hover:text-foreground font-mono transition-colors">
             <Sparkles className="w-3 h-3" /> features
           </Link>
