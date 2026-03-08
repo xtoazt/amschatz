@@ -193,7 +193,13 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
           <Link to="/changelog" className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/80 hover:text-foreground font-mono transition-colors">
             <GitCommit className="w-3 h-3" /> changelog
           </Link>
-          <span className="text-muted-foreground/40 text-[10px]">·</span>
+        </motion.div>
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 1.1 }}
+        >
           <Link to="/features" className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/80 hover:text-foreground font-mono transition-colors">
             <Sparkles className="w-3 h-3" /> features
           </Link>
