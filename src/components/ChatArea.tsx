@@ -48,6 +48,10 @@ interface FileInspectorProps {
 
 function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorProps) {
   const IconComponent = getFileIcon(undefined, fileName);
+  const isTextFile = fileName.toLowerCase().endsWith('.txt');
+  const [textContent, setTextContent] = useState<string | null>(null);
+  const [loadingText, setLoadingText] = useState(false);
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -55,6 +59,16 @@ function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorPr
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [onClose]);
+
+  useEffect(() => {
+    if (!isTextFile) return;
+    setLoadingText(true);
+    fetch(fileUrl)
+      .then(res => res.text())
+      .then(text => setTextContent(text))
+      .catch(() => setTextContent('Failed to load file content.'))
+      .finally(() => setLoadingText(false));
+  }, [fileUrl, isTextFile]);
 
   const handleDownload = () => {
     const a = document.createElement('a');
@@ -81,7 +95,7 @@ function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorPr
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="bg-background border border-foreground p-6 max-w-sm w-full space-y-6"
+        className={`bg-background border border-foreground p-6 w-full space-y-4 ${isTextFile ? 'max-w-lg' : 'max-w-sm'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -107,6 +121,18 @@ function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorPr
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {isTextFile && (
+          <div className="border border-foreground/20 max-h-64 overflow-y-auto scrollbar-thin">
+            {loadingText ? (
+              <div className="p-3 text-xs font-mono text-muted-foreground">Loading...</div>
+            ) : (
+              <pre className="p-3 text-xs font-mono text-foreground whitespace-pre-wrap break-all leading-relaxed">
+                {textContent}
+              </pre>
+            )}
+          </div>
+        )}
 
         <button
           onClick={handleDownload}
