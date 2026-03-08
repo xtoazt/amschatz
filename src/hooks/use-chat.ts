@@ -158,51 +158,7 @@ export function useChat() {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  const checkUsernameAvailable = useCallback(async (username: string, roomCode: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const peekId = `_peek_${generateId()}`;
-      const peekChannel = supabase.channel(`room:${roomCode}:peek:${peekId}`, {
-        config: { presence: { key: peekId } },
-      });
-
-      let resolved = false;
-      const finish = (available: boolean) => {
-        if (resolved) return;
-        resolved = true;
-        clearTimeout(timeout);
-        peekChannel.untrack().then(() => supabase.removeChannel(peekChannel)).catch(() => supabase.removeChannel(peekChannel));
-        resolve(available);
-      };
-
-      const timeout = setTimeout(() => finish(true), 4000);
-
-      let syncCount = 0;
-      peekChannel.on('presence', { event: 'sync' }, () => {
-        syncCount++;
-        // First sync is our own track, second sync includes existing users
-        // Wait for at least the second sync or check after a delay
-        if (syncCount >= 2) {
-          const presenceState = peekChannel.presenceState();
-          const activeKeys = Object.keys(presenceState).filter(k => !k.startsWith('_peek_'));
-          const taken = activeKeys.includes(username);
-          finish(!taken);
-        }
-      });
-
-      peekChannel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await peekChannel.track({ _peek: true });
-          // Also check after a delay in case only one sync fires
-          setTimeout(() => {
-            const presenceState = peekChannel.presenceState();
-            const activeKeys = Object.keys(presenceState).filter(k => !k.startsWith('_peek_'));
-            const taken = activeKeys.includes(username);
-            finish(!taken);
-          }, 1500);
-        }
-      });
-    });
-  }, []);
+  // No longer needed — duplicate check is done post-join inside joinRoom
 
   const joinRoom = useCallback((username: string, roomCode: string) => {
     if (channelRef.current) {
