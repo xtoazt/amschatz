@@ -161,7 +161,7 @@ export function useChat() {
   const checkUsernameAvailable = useCallback(async (username: string, roomCode: string): Promise<boolean> => {
     return new Promise((resolve) => {
       const peekId = `_peek_${generateId()}`;
-      const peekChannel = supabase.channel(`room:${roomCode}`, {
+      const peekChannel = supabase.channel(`room:${roomCode}:peek:${peekId}`, {
         config: { presence: { key: peekId } },
       });
 
