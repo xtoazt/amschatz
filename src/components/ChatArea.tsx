@@ -25,6 +25,7 @@ interface ChatAreaProps {
   frozenBy: string | null;
   nuking: boolean;
   uiScale: number;
+  isPasswordProtected: boolean;
   onScaleChange: (val: number[]) => void;
   onSend: (text: string, replyTo?: ReplyTo) => void;
   onTyping: () => void;
