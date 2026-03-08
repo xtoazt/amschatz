@@ -34,6 +34,7 @@ interface MessageBubbleProps {
   groupInfo: MessageGroupInfo;
   onImageClick: (url: string) => void;
   onInspectFile: (file: InspectedFile) => void;
+  onInspectVideo: (video: InspectedVideo) => void;
   onEdit: (id: string, text: string) => void;
   onUnsend: (id: string) => void;
   onReply: (replyTo: ReplyTo) => void;
