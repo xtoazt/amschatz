@@ -223,6 +223,7 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
       <div className="grain-overlay" />
       
       <ChangelogDialog />
+      <LayoutGroup>
       <motion.form
         onSubmit={handleSubmit}
         className="w-full max-w-sm space-y-5 relative z-10"
