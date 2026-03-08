@@ -24,6 +24,9 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
     }
   };
 
+  // Create masked display value for room code
+  const maskedRoomName = roomName ? '*'.repeat(roomName.length) : '';
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <form onSubmit={handleJoin} className="w-full max-w-sm space-y-5">
@@ -52,23 +55,33 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground font-mono">Room Name</label>
-          <input
-            type="text"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-            placeholder="any name creates a room"
-            className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono"
-            maxLength={30}
-            required
-            disabled={joining}
-          />
+          <label className="text-xs font-medium text-muted-foreground font-mono">Room Code</label>
+          <div className="relative">
+            <input
+              type="text"
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+              placeholder="any code creates a room"
+              className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-transparent placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono caret-foreground selection:bg-foreground/20 selection:text-transparent"
+              maxLength={30}
+              required
+              disabled={joining}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <div 
+              className="absolute inset-0 flex items-center px-3 pointer-events-none font-mono text-sm text-foreground"
+              aria-hidden="true"
+            >
+              {maskedRoomName}
+            </div>
+          </div>
         </div>
 
         <button
           type="submit"
           disabled={!username.trim() || !roomName.trim() || joining}
-          className="w-full bg-primary text-primary-foreground font-medium py-2.5 rounded-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-20 disabled:cursor-not-allowed font-mono"
+          className="w-full bg-primary text-primary-foreground font-medium py-2.5 rounded-md flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed font-mono active:scale-[0.95]"
         >
           {joining ? (
             <>

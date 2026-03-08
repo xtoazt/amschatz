@@ -9,6 +9,11 @@ export interface ChatMessage {
   deleted?: boolean;
   imageUrl?: string;
   imageExpiry?: number;
+  // File attachment properties
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileMimeType?: string;
 }
 
 export interface RoomUser {

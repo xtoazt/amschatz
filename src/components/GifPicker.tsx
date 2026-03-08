@@ -72,7 +72,7 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
         <button
           type="button"
           disabled={disabled}
-          className="p-2.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+          className="p-2.5 text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] disabled:opacity-20 disabled:cursor-not-allowed"
           title="Send GIF"
         >
           <span className="text-xs font-bold tracking-tight">GIF</span>

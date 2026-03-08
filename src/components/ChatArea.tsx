@@ -1,16 +1,113 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bell, BellOff, LogOut, Plus, Check, CheckCheck, ChevronDown } from 'lucide-react';
+import { Send, Bell, BellOff, LogOut, Plus, Check, CheckCheck, ChevronDown, X, Download, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GifPicker } from '@/components/GifPicker';
 import { FullscreenImageViewer } from '@/components/FullscreenImageViewer';
 import { ChatMessage } from '@/types/chat';
-import { Progress } from '@/components/ui/progress';
 import {
   ContextMenu,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
 } from '@/components/ui/context-menu';
+
+// File type detection helper
+function isImageOrGif(url: string, mimeType?: string): boolean {
+  if (mimeType) {
+    return mimeType.startsWith('image/');
+  }
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+  const lowercaseUrl = url.toLowerCase();
+  return imageExtensions.some(ext => lowercaseUrl.includes(ext));
+}
+
+// Format file size helper
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// File Inspector Modal Component
+interface FileInspectorProps {
+  fileName: string;
+  fileSize?: number;
+  fileUrl: string;
+  onClose: () => void;
+}
+
+function FileInspector({ fileName, fileSize, fileUrl, onClose }: FileInspectorProps) {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  const handleDownload = () => {
+    const a = document.createElement('a');
+    a.href = fileUrl;
+    a.download = fileName;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 bg-background/95 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="bg-card border border-foreground/20 rounded-lg p-6 max-w-sm w-full space-y-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-foreground" />
+            </div>
+            <div className="space-y-1 min-w-0 flex-1">
+              <p className="text-sm font-mono text-foreground truncate max-w-[200px]" title={fileName}>
+                {fileName}
+              </p>
+              {fileSize !== undefined && (
+                <p className="text-xs font-mono text-muted-foreground">
+                  {formatFileSize(fileSize)}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors active:scale-[0.95]"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <button
+          onClick={handleDownload}
+          className="w-full py-2.5 px-4 border border-foreground rounded-lg text-foreground font-mono text-sm flex items-center justify-center gap-2 hover:bg-foreground hover:text-background transition-all active:scale-[0.95]"
+        >
+          <Download className="w-4 h-4" />
+          Download
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 interface ChatAreaProps {
   messages: ChatMessage[];
@@ -30,7 +127,8 @@ interface ChatAreaProps {
   onSendGif: (url: string) => void;
 }
 
-const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const ACCEPTED_FILE_TYPES = [...ACCEPTED_IMAGE_TYPES, 'application/pdf', 'application/zip', 'application/x-zip-compressed', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
 function isImageExpired(expiry?: number) {
   if (!expiry) return false;
@@ -76,6 +174,9 @@ export function ChatArea({
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isRoomNameHovered, setIsRoomNameHovered] = useState(false);
+  const [notificationJiggle, setNotificationJiggle] = useState(false);
+  const [inspectedFile, setInspectedFile] = useState<{ name: string; size?: number; url: string } | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -158,8 +259,14 @@ export function ChatArea({
     setEditText('');
   };
 
+  const handleNotificationToggle = useCallback(() => {
+    setNotificationJiggle(true);
+    setTimeout(() => setNotificationJiggle(false), 500);
+    onToggleNotifications();
+  }, [onToggleNotifications]);
+
   const handleFileUpload = useCallback(async (file: File) => {
-    if (!ACCEPTED_TYPES.includes(file.type)) return;
+    if (!ACCEPTED_FILE_TYPES.includes(file.type)) return;
     setUploading(true);
     setUploadProgress(0);
     await onSendImage(file, (p) => setUploadProgress(p));
@@ -215,15 +322,22 @@ export function ChatArea({
       )}
 
       <header className="h-12 flex items-center justify-between px-4 shrink-0 bg-card">
-        <span className="text-sm font-medium text-foreground">{roomCode}</span>
+        <span 
+          className="text-sm font-medium text-foreground font-mono cursor-default select-none transition-all duration-200"
+          onMouseEnter={() => setIsRoomNameHovered(true)}
+          onMouseLeave={() => setIsRoomNameHovered(false)}
+          title="Hover to reveal"
+        >
+          {isRoomNameHovered ? roomCode : '*'.repeat(roomCode.length || 8)}
+        </span>
         <div className="flex items-center gap-1">
           <button
-            onClick={onToggleNotifications}
-            className={`p-2 rounded-md transition-colors ${notificationsEnabled ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={handleNotificationToggle}
+            className={`p-2 rounded-md transition-all active:scale-[0.95] ${notificationJiggle ? 'animate-jiggle' : ''} ${notificationsEnabled ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {notificationsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
           </button>
-          <button onClick={onLeave} className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors md:hidden">
+          <button onClick={onLeave} className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] md:hidden">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -235,40 +349,55 @@ export function ChatArea({
         </div>
       )}
 
-      {uploading && (
-        <div className="px-4 py-2">
-          <Progress value={uploadProgress} className="h-1" />
-        </div>
-      )}
-
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-2">
+        <AnimatePresence initial={false}>
         {messages.map((msg) => {
           if (msg.type === 'system') {
             return (
-              <div key={msg.id} className="flex justify-center py-1">
+              <motion.div 
+                key={msg.id} 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="flex justify-center py-1"
+              >
                 <span className="text-[11px] text-muted-foreground font-mono">{msg.text}</span>
-              </div>
+              </motion.div>
             );
           }
 
           if (msg.type === 'announcement') {
             return (
-              <div key={msg.id} className="flex justify-center py-2">
+              <motion.div 
+                key={msg.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="flex justify-center py-2"
+              >
                 <span className="text-xs font-semibold text-foreground">{msg.text}</span>
-              </div>
+              </motion.div>
             );
           }
 
           if (msg.deleted) {
             return (
-              <div key={msg.id} className={`flex ${msg.username === currentUser ? 'justify-end' : 'justify-start'}`}>
+              <motion.div 
+                key={msg.id} 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className={`flex ${msg.username === currentUser ? 'justify-end' : 'justify-start'}`}
+              >
                 <span className="text-[11px] italic text-muted-foreground px-3 py-2">Message deleted</span>
-              </div>
+              </motion.div>
             );
           }
 
           const isOwn = msg.username === currentUser;
           const imageExpired = isImageExpired(msg.imageExpiry);
+          const hasFile = msg.fileUrl && msg.fileName;
+          const isFileImageOrGif = msg.fileUrl ? isImageOrGif(msg.fileUrl, msg.fileMimeType) : true;
 
           const bubble = (
             <div className="max-w-[75%] space-y-0.5">
@@ -310,6 +439,16 @@ export function ChatArea({
                   {msg.imageUrl && imageExpired && (
                     <span className="text-[11px] italic text-muted-foreground">Image expired</span>
                   )}
+                  {/* File attachment (non-image) */}
+                  {hasFile && !isFileImageOrGif && (
+                    <button
+                      onClick={() => setInspectedFile({ name: msg.fileName!, size: msg.fileSize, url: msg.fileUrl! })}
+                      className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg border border-foreground/10 hover:bg-secondary transition-all active:scale-[0.95] mb-1 w-full"
+                    >
+                      <FileText className="w-4 h-4 text-foreground shrink-0" />
+                      <span className="text-xs font-mono text-foreground truncate">{msg.fileName}</span>
+                    </button>
+                  )}
                   {msg.text}
                 </div>
               )}
@@ -325,26 +464,42 @@ export function ChatArea({
 
           if (isOwn) {
             return (
-              <ContextMenu key={msg.id}>
-                <ContextMenuTrigger asChild>
-                  <div className="flex justify-end">{bubble}</div>
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                  <ContextMenuItem onSelect={() => { setEditingId(msg.id); setEditText(msg.text); }}>
-                    Edit
-                  </ContextMenuItem>
-                  <ContextMenuItem onSelect={() => onUnsend(msg.id)}>
-                    Unsend
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <ContextMenu>
+                  <ContextMenuTrigger asChild>
+                    <div className="flex justify-end">{bubble}</div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onSelect={() => { setEditingId(msg.id); setEditText(msg.text); }}>
+                      Edit
+                    </ContextMenuItem>
+                    <ContextMenuItem onSelect={() => onUnsend(msg.id)}>
+                      Unsend
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+              </motion.div>
             );
           }
 
           return (
-            <div key={msg.id} className="flex justify-start">{bubble}</div>
+            <motion.div 
+              key={msg.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+              className="flex justify-start"
+            >
+              {bubble}
+            </motion.div>
           );
         })}
+        </AnimatePresence>
         <div ref={endRef} />
       </div>
 
@@ -356,7 +511,7 @@ export function ChatArea({
             exit={{ opacity: 0, scale: 0.8, y: 10 }}
             transition={{ duration: 0.2 }}
             onClick={() => scrollToBottom(true)}
-            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-12 h-12 rounded-full bg-black border border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-lg"
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-12 h-12 rounded-full bg-black border border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-all active:scale-[0.95] shadow-lg"
             aria-label="Scroll to bottom"
           >
             <ChevronDown className="w-5 h-5" />
@@ -394,13 +549,21 @@ export function ChatArea({
         }}
       />
 
-      <form onSubmit={handleSubmit} className="p-3 shrink-0">
+      <form onSubmit={handleSubmit} className="p-3 shrink-0 relative">
+        {uploading && (
+          <div className="absolute top-0 left-3 right-3 h-[1px] bg-muted overflow-hidden">
+            <div 
+              className="h-full bg-foreground transition-all duration-200"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        )}
         <div className="flex gap-1 items-center">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isInputDisabled}
-            className="p-2.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+            className="p-2.5 text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] disabled:opacity-20 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -417,7 +580,7 @@ export function ChatArea({
           <button
             type="submit"
             disabled={!input.trim() || isInputDisabled}
-            className="bg-primary text-primary-foreground p-2.5 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-20 disabled:cursor-not-allowed"
+            className="bg-primary text-primary-foreground p-2.5 rounded-lg hover:opacity-90 transition-all active:scale-[0.95] disabled:opacity-20 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4" />
           </button>
@@ -430,6 +593,17 @@ export function ChatArea({
           onClose={() => setFullscreenImage(null)}
         />
       )}
+
+      <AnimatePresence>
+        {inspectedFile && (
+          <FileInspector
+            fileName={inspectedFile.name}
+            fileSize={inspectedFile.size}
+            fileUrl={inspectedFile.url}
+            onClose={() => setInspectedFile(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
