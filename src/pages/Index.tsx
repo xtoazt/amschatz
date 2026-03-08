@@ -18,7 +18,7 @@ const Index = () => {
   const [nuking, setNuking] = useState(false);
   const [uiScale, setUiScale] = useState(() => {
     const saved = localStorage.getItem('v0id-ui-scale');
-    return saved ? Number(saved) : 70;
+    return saved ? Number(saved) : 100;
   });
 
   const handleScaleChange = useCallback((val: number[]) => {
