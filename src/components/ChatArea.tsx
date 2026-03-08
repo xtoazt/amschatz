@@ -78,7 +78,7 @@ export function ChatArea({
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
-  const lastMessageCountRef = useRef(messages.length);
+  const lastMessageIdRef = useRef<string | null>(null);
   const userScrolledRef = useRef(false);
 
   const checkIfScrolledUp = useCallback(() => {
@@ -124,19 +124,32 @@ export function ChatArea({
   }, [handleScroll]);
 
   useEffect(() => {
-    const newCount = messages.length;
-    if (newCount > lastMessageCountRef.current) {
+    if (messages.length === 0) {
+      lastMessageIdRef.current = null;
+      return;
+    }
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.id !== lastMessageIdRef.current) {
+      // New message(s) arrived
       if (checkIfScrolledUp() && userScrolledRef.current) {
-        const newMsgs = messages.slice(lastMessageCountRef.current);
-        if (newMsgs.length > 0 && !unreadMarkerId) {
-          setUnreadMarkerId(newMsgs[0].id);
+        if (!unreadMarkerId) {
+          // Find the first message after the old last known
+          const oldIdx = lastMessageIdRef.current
+            ? messages.findIndex(m => m.id === lastMessageIdRef.current)
+            : -1;
+          const firstNewMsg = messages[oldIdx + 1];
+          if (firstNewMsg) setUnreadMarkerId(firstNewMsg.id);
         }
-        setUnreadCount(prev => prev + (newCount - lastMessageCountRef.current));
+        const oldIdx = lastMessageIdRef.current
+          ? messages.findIndex(m => m.id === lastMessageIdRef.current)
+          : -1;
+        const newMsgCount = messages.length - (oldIdx + 1);
+        if (newMsgCount > 0) setUnreadCount(prev => prev + newMsgCount);
       } else {
         scrollToBottom(false);
       }
+      lastMessageIdRef.current = lastMsg.id;
     }
-    lastMessageCountRef.current = newCount;
   }, [messages, checkIfScrolledUp, scrollToBottom, unreadMarkerId]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -497,12 +510,15 @@ export function ChatArea({
       <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
         <SheetContent side="left" className="p-0 w-56">
           <SheetTitle className="sr-only">Users</SheetTitle>
-          <ChatSidebar
-            roomCode={roomCode}
-            users={users}
-            currentUser={currentUser}
-            onLeave={() => { setMobileSidebarOpen(false); onLeave(); }}
-          />
+          <div className="h-full">
+            <ChatSidebar
+              roomCode={roomCode}
+              users={users}
+              currentUser={currentUser}
+              onLeave={() => { setMobileSidebarOpen(false); onLeave(); }}
+              className="flex"
+            />
+          </div>
         </SheetContent>
       </Sheet>
     </div>

@@ -8,6 +8,7 @@ interface ChatSidebarProps {
   users: RoomUser[];
   currentUser: string;
   onLeave: () => void;
+  className?: string;
 }
 
 function UserAvatar({ username, isYou }: { username: string; isYou: boolean }) {
@@ -21,11 +22,11 @@ function UserAvatar({ username, isYou }: { username: string; isYou: boolean }) {
   );
 }
 
-export function ChatSidebar({ roomCode, users, currentUser, onLeave }: ChatSidebarProps) {
+export function ChatSidebar({ roomCode, users, currentUser, onLeave, className }: ChatSidebarProps) {
   const [isRoomNameHovered, setIsRoomNameHovered] = useState(false);
   
   return (
-    <div className="w-56 h-full bg-card flex flex-col shrink-0 hidden md:flex">
+    <div className={`w-56 h-full bg-card flex flex-col shrink-0 ${className ?? 'hidden md:flex'}`}>
       <div className="p-4">
         <span className="text-xs font-medium text-muted-foreground">Room</span>
         <p 
