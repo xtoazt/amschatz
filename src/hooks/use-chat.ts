@@ -231,22 +231,26 @@ export function useChat() {
 
         if (notificationsRef.current && document.hidden) {
           let body: string;
-          if (msg.imageUrl) {
-            const isGif = msg.imageUrl.includes('tenor.com') || msg.imageUrl.includes('giphy.com');
-            body = isGif ? '🎞️ Sent a GIF' : '📷 Sent a photo';
+          const isGifUrl = (url?: string) => url && (url.includes('tenor.com') || url.includes('giphy.com') || url.includes('/gif'));
+          if (msg.imageUrl && isGifUrl(msg.imageUrl)) {
+            body = `${msg.username} sent a GIF`;
+          } else if (msg.imageUrl) {
+            body = `${msg.username} sent a photo 📷`;
           } else if (msg.fileUrl) {
-            body = `📎 Sent a file: ${msg.fileName || 'attachment'}`;
+            body = `${msg.username} sent a file: ${msg.fileName || 'attachment'}`;
+          } else if (isGifUrl(msg.text)) {
+            body = `${msg.username} sent a GIF`;
           } else if (msg.replyTo) {
-            const replyText = msg.text ? msg.text.slice(0, 80) : 'Sent a message';
-            body = `↩️ Replying to ${msg.replyTo.username}: ${replyText}`;
+            const replyText = msg.text ? `"${msg.text.slice(0, 80)}"` : '';
+            body = `${msg.username} replied to ${msg.replyTo.username}: ${replyText}`;
           } else if (msg.text) {
-            body = msg.text.length > 100 ? msg.text.slice(0, 100) + '…' : msg.text;
+            const truncated = msg.text.length > 100 ? msg.text.slice(0, 100) + '…' : msg.text;
+            body = `${msg.username} said: "${truncated}"`;
           } else {
-            body = 'Sent a message';
+            body = `${msg.username} sent a message`;
           }
-          new Notification(`${msg.username} in ${state.roomCode}`, {
+          new Notification(state.roomCode, {
             body,
-            tag: state.roomCode,
             icon: '/favicon.ico',
           });
         }
