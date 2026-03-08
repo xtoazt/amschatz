@@ -177,7 +177,7 @@ export function FileInspector({ file, onClose }: FileInspectorProps) {
             Download
           </motion.button>
 
-          {(isTextFile || true) && (
+          {isTextFile && (
             <motion.button
               onClick={handleCopy}
               whileTap={{ scale: 0.95 }}
