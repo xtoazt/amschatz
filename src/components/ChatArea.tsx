@@ -66,7 +66,7 @@ export function ChatArea({
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [uiScale, setUiScale] = useState(() => {
     const saved = localStorage.getItem('v0id-ui-scale');
-    return saved ? Number(saved) : 100;
+    return saved ? Number(saved) : 50;
   });
 
   const handleScaleChange = useCallback((val: number[]) => {
@@ -201,8 +201,8 @@ export function ChatArea({
 
   return (
     <div
-      className="flex-1 flex flex-col h-screen min-w-0 relative origin-top-left"
-      style={{ transform: `scale(${uiScale / 100})`, width: `${10000 / uiScale}%`, height: `${10000 / uiScale}%` }}
+      className="flex-1 flex flex-col h-screen min-w-0 relative"
+      style={{ zoom: uiScale / 100 }}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
