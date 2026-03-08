@@ -39,6 +39,7 @@ export default function Changelog() {
 
         const allData: CachedCommit[] = data.commits || [];
         setAllCommits(allData);
+        setCommitsCached(!!data.cached);
 
         const grouped: Record<string, CachedCommit[]> = {};
         allData.forEach(c => {
