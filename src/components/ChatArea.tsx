@@ -68,9 +68,11 @@ export function ChatArea({
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMarkerId, setUnreadMarkerId] = useState<string | null>(null);
   const [notificationJiggle, setNotificationJiggle] = useState(false);
   const [inspectedFile, setInspectedFile] = useState<InspectedFile | null>(null);
   const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
