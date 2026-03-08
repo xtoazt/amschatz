@@ -48,6 +48,7 @@ export function ChatArea({
   frozen,
   frozenBy,
   nuking,
+  isPasswordProtected,
   uiScale,
   onScaleChange,
   onSend,
