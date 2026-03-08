@@ -330,6 +330,7 @@ export function ChatArea({
                   groupInfo={groupInfo}
                   onImageClick={setFullscreenImage}
                   onInspectFile={setInspectedFile}
+                  onInspectVideo={setInspectedVideo}
                   onEdit={handleStartEdit}
                   onUnsend={onUnsend}
                   onReply={setReplyingTo}
