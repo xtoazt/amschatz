@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Loader2, GitCommit, Sparkles } from 'lucide-react';
+import { ArrowRight, Loader2, GitCommit, Sparkles, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { ChangelogDialog } from '@/components/ChangelogDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface JoinScreenProps {
   onJoin: (username: string, roomCode: string) => Promise<{ error: string | null }>;
 }
 
-// Glitch text effect component
 function GlitchTitle() {
   const [glitching, setGlitching] = useState(false);
 
@@ -38,22 +39,70 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
   const [roomName, setRoomName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [passwordProtect, setPasswordProtect] = useState(false);
+  const [roomPassword, setRoomPassword] = useState('');
+  // State for when joining a password-protected room
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [joinPassword, setJoinPassword] = useState('');
+  const [checkingRoom, setCheckingRoom] = useState(false);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !roomName.trim()) return;
     setError(null);
-    setJoining(true);
-    const result = await onJoin(username.trim(), roomName.trim());
-    if (result.error) {
-      setError(result.error);
+    setCheckingRoom(true);
+
+    try {
+      // If creating with password, set it first
+      if (passwordProtect && roomPassword.trim()) {
+        await supabase.functions.invoke('room-password', {
+          body: { action: 'set', roomCode: roomName.trim(), password: roomPassword.trim(), username: username.trim() },
+        });
+      }
+
+      // Check if room has a password (only if we're not the one setting it)
+      if (!passwordProtect) {
+        const { data } = await supabase.functions.invoke('room-password', {
+          body: { action: 'check', roomCode: roomName.trim() },
+        });
+
+        if (data?.hasPassword) {
+          if (!needsPassword) {
+            setNeedsPassword(true);
+            setCheckingRoom(false);
+            return;
+          }
+          // Verify the password
+          const { data: verifyData } = await supabase.functions.invoke('room-password', {
+            body: { action: 'verify', roomCode: roomName.trim(), password: joinPassword.trim() },
+          });
+
+          if (!verifyData?.valid) {
+            setError('WRONG PASSWORD');
+            setCheckingRoom(false);
+            return;
+          }
+        }
+      }
+
+      setCheckingRoom(false);
+      setJoining(true);
+      const result = await onJoin(username.trim(), roomName.trim());
+      if (result.error) {
+        setError(result.error);
+        setJoining(false);
+      }
+    } catch {
+      setError('CONNECTION FAILED');
+      setCheckingRoom(false);
       setJoining(false);
     }
   };
 
+  const isLoading = joining || checkingRoom;
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Grain texture overlay */}
       <div className="grain-overlay" />
       
       <ChangelogDialog />
@@ -87,7 +136,7 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
           )}
         </AnimatePresence>
 
-        {/* Username field - stagger delay 0.2s */}
+        {/* Username field */}
         <motion.div
           className="space-y-1.5"
           initial={{ opacity: 0, y: 12 }}
@@ -103,11 +152,11 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
             className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono"
             maxLength={20}
             required
-            disabled={joining}
+            disabled={isLoading}
           />
         </motion.div>
 
-        {/* Room code field - stagger delay 0.4s */}
+        {/* Room code field */}
         <motion.div
           className="space-y-1.5"
           initial={{ opacity: 0, y: 12 }}
@@ -119,12 +168,12 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
             <input
               type="text"
               value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
+              onChange={(e) => { setRoomName(e.target.value); setNeedsPassword(false); setJoinPassword(''); }}
               placeholder="any code creates a room"
               className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-transparent placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono caret-foreground selection:bg-foreground/20 selection:text-transparent"
               maxLength={30}
               required
-              disabled={joining}
+              disabled={isLoading}
               autoComplete="off"
               spellCheck={false}
             />
@@ -137,11 +186,7 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
                   key={`${i}-${roomName.length}`}
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 500,
-                    damping: 15,
-                  }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 15 }}
                 >
                   *
                 </motion.span>
@@ -150,7 +195,86 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
           </div>
         </motion.div>
 
-        {/* Join button - stagger delay 0.6s with breathing glow */}
+        {/* Password protect toggle */}
+        <AnimatePresence>
+          {!needsPassword && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.4, delay: 0.6 }}
+              className="space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground font-mono flex items-center gap-1.5">
+                  <Lock className="w-3 h-3" />
+                  Password Protect
+                </label>
+                <Switch
+                  checked={passwordProtect}
+                  onCheckedChange={(checked) => {
+                    setPasswordProtect(checked);
+                    if (!checked) setRoomPassword('');
+                  }}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <AnimatePresence>
+                {passwordProtect && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <input
+                      type="password"
+                      value={roomPassword}
+                      onChange={(e) => setRoomPassword(e.target.value)}
+                      placeholder="room password"
+                      className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono"
+                      maxLength={50}
+                      disabled={isLoading}
+                      autoComplete="new-password"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Password prompt when joining a protected room */}
+        <AnimatePresence>
+          {needsPassword && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-1.5"
+            >
+              <label className="text-xs font-medium text-muted-foreground font-mono flex items-center gap-1.5">
+                <Lock className="w-3 h-3" />
+                This room is locked — enter password
+              </label>
+              <input
+                type="password"
+                value={joinPassword}
+                onChange={(e) => { setJoinPassword(e.target.value); setError(null); }}
+                placeholder="••••••••"
+                className="w-full bg-input rounded-md py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-colors font-mono"
+                maxLength={50}
+                autoFocus
+                disabled={isLoading}
+                autoComplete="off"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Join button */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -158,14 +282,19 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
         >
           <motion.button
             type="submit"
-            disabled={!username.trim() || !roomName.trim() || joining}
+            disabled={!username.trim() || !roomName.trim() || isLoading || (passwordProtect && !roomPassword.trim()) || (needsPassword && !joinPassword.trim())}
             className="w-full bg-primary text-primary-foreground font-medium py-2.5 rounded-md flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed font-mono relative join-button-glow"
             whileTap={{ scale: 0.95 }}
           >
-            {joining ? (
+            {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                entering...
+                {checkingRoom ? 'checking...' : 'entering...'}
+              </>
+            ) : needsPassword ? (
+              <>
+                <Lock className="w-4 h-4" />
+                unlock
               </>
             ) : (
               <>
