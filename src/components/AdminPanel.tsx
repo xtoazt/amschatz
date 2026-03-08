@@ -22,10 +22,12 @@ export function AdminPanel({
   users,
   userCount,
   frozen,
+  gingerMode,
   onNuke,
   onFreeze,
   onAnnounce,
   onKick,
+  onToggleGinger,
   onClose,
 }: AdminPanelProps) {
   const [view, setView] = useState<'main' | 'logs' | 'kick'>('main');
