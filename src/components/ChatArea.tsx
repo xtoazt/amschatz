@@ -17,6 +17,7 @@ interface ChatAreaProps {
   messages: ChatMessage[];
   currentUser: string;
   roomCode: string;
+  users: RoomUser[];
   notificationsEnabled: boolean;
   typingUsers: string[];
   frozen: boolean;
