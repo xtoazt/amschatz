@@ -58,7 +58,6 @@ export function ChatArea({
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isRoomNameHovered, setIsRoomNameHovered] = useState(false);
   const [notificationJiggle, setNotificationJiggle] = useState(false);
   const [inspectedFile, setInspectedFile] = useState<InspectedFile | null>(null);
   const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
@@ -186,7 +185,7 @@ export function ChatArea({
 
   const isInputDisabled = frozen && frozenBy !== currentUser;
 
-  const maskedRoomName = useMemo(() => '*'.repeat(roomCode.length || 8), [roomCode]);
+  
 
   return (
     <div
@@ -204,16 +203,9 @@ export function ChatArea({
 
       {/* Header */}
       <header className="h-12 flex items-center justify-between px-4 shrink-0 bg-card">
-        <motion.span
-          className="text-sm font-medium text-foreground font-mono cursor-default select-none"
-          onMouseEnter={() => setIsRoomNameHovered(true)}
-          onMouseLeave={() => setIsRoomNameHovered(false)}
-          title="Hover to reveal"
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.15 }}
-        >
-          {isRoomNameHovered ? roomCode : maskedRoomName}
-        </motion.span>
+        <span className="text-sm font-medium text-foreground font-mono cursor-default select-none">
+          {currentUser}
+        </span>
         <div className="flex items-center gap-1">
           <motion.button
             onClick={handleNotificationToggle}
