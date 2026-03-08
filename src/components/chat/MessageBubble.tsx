@@ -84,7 +84,7 @@ const messageVariants = {
     scale: 1,
     filter: 'blur(0px)',
     transition: {
-      type: 'spring',
+      type: 'spring' as const,
       stiffness: 380,
       damping: 28,
       mass: 0.8,
