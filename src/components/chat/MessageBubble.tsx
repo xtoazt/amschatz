@@ -189,7 +189,8 @@ export const MessageBubble = memo(function MessageBubble({
         </div>
       ) : (
         <div
-          className={`px-3 py-2 text-sm leading-relaxed transition-[filter] duration-150 hover:brightness-110 w-fit max-w-full ${radiusClass} ${
+          onDoubleClick={() => onReact(msg.id, '⚡')}
+          className={`px-3 py-2 text-sm leading-relaxed transition-[filter] duration-150 hover:brightness-110 w-fit max-w-full select-none ${radiusClass} ${
             isOwn
               ? 'bg-message-own text-message-own-foreground'
               : 'bg-message-other text-message-other-foreground'
