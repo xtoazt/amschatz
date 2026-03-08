@@ -263,6 +263,11 @@ export const MessageBubble = memo(function MessageBubble({
       <ContextMenuItem onSelect={() => onReply({ id: msg.id, username: msg.username, text: msg.text.slice(0, 100) })}>
         Reply
       </ContextMenuItem>
+      {msg.text && (
+        <ContextMenuItem onSelect={() => { navigator.clipboard.writeText(msg.text); toast('Copied to clipboard', { duration: 1500 }); }}>
+          Copy
+        </ContextMenuItem>
+      )}
       <ContextMenuItem onSelect={() => setShowReactionPicker(prev => !prev)}>
         React
       </ContextMenuItem>
