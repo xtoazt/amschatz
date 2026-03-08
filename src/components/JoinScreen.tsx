@@ -62,49 +62,82 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
 
       const roomAlreadyHasPassword = checkData?.hasPassword;
 
-      if (roomAlreadyHasPassword) {
-        // Room is already locked — must verify password regardless of toggle state
-        if (!needsPassword) {
-          toast.info('ROOM IS LOCKED', {
-            description: 'This room is password-protected. Enter the password to join.',
-            duration: 4000,
-          });
-          setNeedsPassword(true);
-          setPasswordProtect(false);
-          setCheckingRoom(false);
-          return;
-        }
-        const { data: verifyData } = await supabase.functions.invoke('room-password', {
-          body: { action: 'verify', roomCode: roomName.trim(), password: joinPassword.trim() },
-        });
+      let roomIsActiveAndLocked = false;
 
-        if (!verifyData?.valid) {
-          setError('WRONG PASSWORD');
-          toast.error('ACCESS DENIED', {
-            description: 'The password you entered is incorrect. Please try again.',
-            duration: 4000,
-          });
-          setCheckingRoom(false);
-          return;
-        }
-      } else if (passwordProtect && roomPassword.trim()) {
-        // Only allow setting a password if the room is empty (no active users)
-        const channel = supabase.channel(`room:${roomName.trim()}`);
+      if (roomAlreadyHasPassword) {
+        // Check if anyone is actually in the room
+        const presenceChannel = supabase.channel(`room:${roomName.trim()}`);
         const hasActiveUsers = await new Promise<boolean>((resolve) => {
           let resolved = false;
-          channel.on('presence', { event: 'sync' }, () => {
+          presenceChannel.on('presence', { event: 'sync' }, () => {
             if (resolved) return;
             resolved = true;
-            const users = Object.keys(channel.presenceState());
+            const users = Object.keys(presenceChannel.presenceState());
             resolve(users.length > 0);
           });
-          channel.subscribe();
-          // Timeout fallback — if no sync in 2s, assume empty
+          presenceChannel.subscribe();
           setTimeout(() => { if (!resolved) { resolved = true; resolve(false); } }, 2000);
         });
-        supabase.removeChannel(channel);
+        supabase.removeChannel(presenceChannel);
 
-        if (hasActiveUsers) {
+        if (!hasActiveUsers) {
+          // Stale password — room is inactive, clean it up
+          await supabase.functions.invoke('room-password', {
+            body: { action: 'delete', roomCode: roomName.trim() },
+          });
+          // Proceed as if no password existed
+        } else {
+          roomIsActiveAndLocked = true;
+          // Room is active and password-protected
+          if (!needsPassword) {
+            const hadPasswordToggle = passwordProtect;
+            toast.info('ROOM ALREADY IN USE', {
+              description: hadPasswordToggle
+                ? 'This room name is already taken and password-protected. Your password settings were ignored. Enter the existing password to join.'
+                : 'This room name is already taken and password-protected. Enter the password to join.',
+              duration: 5000,
+            });
+            setNeedsPassword(true);
+            setPasswordProtect(false);
+            setRoomTaken(true);
+            setCheckingRoom(false);
+            return;
+          }
+          const { data: verifyData } = await supabase.functions.invoke('room-password', {
+            body: { action: 'verify', roomCode: roomName.trim(), password: joinPassword.trim() },
+          });
+
+          if (!verifyData?.valid) {
+            setError('WRONG PASSWORD');
+            toast.error('ACCESS DENIED', {
+              description: 'The password you entered is incorrect. Please try again.',
+              duration: 4000,
+            });
+            setCheckingRoom(false);
+            return;
+          }
+        }
+      }
+
+      // If stale password was cleaned up or room never had a password, allow setting new one
+      const stillHasPassword = roomIsActiveAndLocked;
+      if (!stillHasPassword && passwordProtect && roomPassword.trim()) {
+        // Only allow setting a password if the room is empty (no active users)
+        const channel2 = supabase.channel(`room-check:${roomName.trim()}`);
+        const roomHasUsers = await new Promise<boolean>((resolve) => {
+          let resolved = false;
+          channel2.on('presence', { event: 'sync' }, () => {
+            if (resolved) return;
+            resolved = true;
+            const users = Object.keys(channel2.presenceState());
+            resolve(users.length > 0);
+          });
+          channel2.subscribe();
+          setTimeout(() => { if (!resolved) { resolved = true; resolve(false); } }, 2000);
+        });
+        supabase.removeChannel(channel2);
+
+        if (roomHasUsers) {
           setRoomTaken(true);
           setError('ROOM ALREADY ACTIVE');
           toast.error('CANNOT SET PASSWORD', {
