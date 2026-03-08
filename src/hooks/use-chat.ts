@@ -230,7 +230,25 @@ export function useChat() {
         }
 
         if (notificationsRef.current && document.hidden) {
-          new Notification(msg.username, { body: msg.text });
+          let body: string;
+          if (msg.imageUrl) {
+            const isGif = msg.imageUrl.includes('tenor.com') || msg.imageUrl.includes('giphy.com');
+            body = isGif ? '🎞️ Sent a GIF' : '📷 Sent a photo';
+          } else if (msg.fileUrl) {
+            body = `📎 Sent a file: ${msg.fileName || 'attachment'}`;
+          } else if (msg.replyTo) {
+            const replyText = msg.text ? msg.text.slice(0, 80) : 'Sent a message';
+            body = `↩️ Replying to ${msg.replyTo.username}: ${replyText}`;
+          } else if (msg.text) {
+            body = msg.text.length > 100 ? msg.text.slice(0, 100) + '…' : msg.text;
+          } else {
+            body = 'Sent a message';
+          }
+          new Notification(`${msg.username} in ${state.roomCode}`, {
+            body,
+            tag: state.roomCode,
+            icon: '/favicon.ico',
+          });
         }
       });
 
