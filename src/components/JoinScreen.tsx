@@ -65,22 +65,52 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
         // Room is already locked — must verify password regardless of toggle state
         if (!needsPassword) {
           setNeedsPassword(true);
-          setPasswordProtect(false); // hide the toggle, show password prompt instead
+          setPasswordProtect(false);
           setCheckingRoom(false);
           return;
         }
-        // Verify the password
         const { data: verifyData } = await supabase.functions.invoke('room-password', {
           body: { action: 'verify', roomCode: roomName.trim(), password: joinPassword.trim() },
         });
 
         if (!verifyData?.valid) {
           setError('WRONG PASSWORD');
+          toast.error('ACCESS DENIED', {
+            description: 'The password you entered is incorrect. Please try again.',
+            duration: 4000,
+          });
           setCheckingRoom(false);
           return;
         }
       } else if (passwordProtect && roomPassword.trim()) {
-        // Room has no password yet — set one
+        // Only allow setting a password if the room is empty (no active users)
+        const channel = supabase.channel(`peek:${roomName.trim()}`);
+        const hasActiveUsers = await new Promise<boolean>((resolve) => {
+          let resolved = false;
+          channel.on('presence', { event: 'sync' }, () => {
+            if (resolved) return;
+            resolved = true;
+            const users = Object.keys(channel.presenceState());
+            resolve(users.length > 0);
+          });
+          channel.subscribe();
+          // Timeout fallback — if no sync in 2s, assume empty
+          setTimeout(() => { if (!resolved) { resolved = true; resolve(false); } }, 2000);
+        });
+        supabase.removeChannel(channel);
+
+        if (hasActiveUsers) {
+          setError('ROOM ALREADY ACTIVE');
+          toast.error('CANNOT SET PASSWORD', {
+            description: 'This room already has active users. You cannot add a password to an existing room.',
+            duration: 4000,
+          });
+          setPasswordProtect(false);
+          setRoomPassword('');
+          setCheckingRoom(false);
+          return;
+        }
+
         await supabase.functions.invoke('room-password', {
           body: { action: 'set', roomCode: roomName.trim(), password: roomPassword.trim(), username: username.trim() },
         });
@@ -96,6 +126,7 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
       }
     } catch {
       setError('CONNECTION FAILED');
+      toast.error('CONNECTION FAILED', { description: 'Could not reach the server. Try again.' });
       setCheckingRoom(false);
       setJoining(false);
     }
