@@ -102,6 +102,7 @@ export function useChat() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const notificationsRef = useRef(state.notificationsEnabled);
   const usernameRef = useRef(state.username);
+  const roomCodeRef = useRef(state.roomCode);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const sendTimestamps = useRef<number[]>([]);
@@ -110,6 +111,7 @@ export function useChat() {
 
   useEffect(() => { notificationsRef.current = state.notificationsEnabled; }, [state.notificationsEnabled]);
   useEffect(() => { usernameRef.current = state.username; }, [state.username]);
+  useEffect(() => { roomCodeRef.current = state.roomCode; }, [state.roomCode]);
 
   useEffect(() => {
     return () => {
