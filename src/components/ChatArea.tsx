@@ -201,10 +201,7 @@ export function ChatArea({
       )}
 
       {/* Header */}
-      <header className="h-12 flex items-center justify-between px-4 shrink-0 bg-card/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-20">
-        <span className="text-sm font-medium text-foreground font-mono cursor-default select-none">
-          {currentUser}
-        </span>
+      <header className="h-12 flex items-center justify-end px-4 shrink-0 bg-card/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-20">
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
