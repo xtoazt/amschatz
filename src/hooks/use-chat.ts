@@ -380,18 +380,7 @@ export function useChat() {
               }
             });
           }
-          setState(prev => ({
-            ...prev,
-            isJoined: false,
-            messages: [],
-            users: [],
-            username: '',
-            roomCode: '',
-            typingUsers: [],
-            frozen: false,
-            frozenBy: null,
-            isPasswordProtected: false,
-          }));
+          setState(prev => ({ ...prev, ...DEFAULT_ROOM_STATE }));
           setTimeout(() => {
             toast.error('YOU HAVE BEEN REMOVED', {
               description: 'An admin removed you from the void.',
