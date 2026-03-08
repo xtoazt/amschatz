@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, forwardRef } from 'react';
 import { useTick } from '@/hooks/use-tick';
 
 const TEN_MINUTES = 10 * 60 * 1000;
@@ -7,7 +7,7 @@ interface SelfDestructTimerProps {
   timestamp: number;
 }
 
-export const SelfDestructTimer = memo(function SelfDestructTimer({ timestamp }: SelfDestructTimerProps) {
+export const SelfDestructTimer = memo(forwardRef<HTMLSpanElement, SelfDestructTimerProps>(function SelfDestructTimer({ timestamp, ...props }, ref) {
   const now = useTick();
 
   const remaining = Math.max(0, (timestamp + TEN_MINUTES) - now);
@@ -19,9 +19,11 @@ export const SelfDestructTimer = memo(function SelfDestructTimer({ timestamp }: 
 
   return (
     <span
+      ref={ref}
+      {...props}
       className={`text-[9px] font-mono tabular-nums ${urgent ? 'text-foreground' : 'text-muted-foreground/50'}`}
     >
       {display}
     </span>
   );
-});
+}));
