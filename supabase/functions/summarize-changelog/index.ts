@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -9,10 +11,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { commits } = await req.json();
-    if (!Array.isArray(commits) || commits.length === 0) {
-      return new Response(JSON.stringify({ error: 'No commits provided' }), {
+    const { commits, latest_sha } = await req.json();
+    if (!Array.isArray(commits) || commits.length === 0 || !latest_sha) {
+      return new Response(JSON.stringify({ error: 'No commits or SHA provided' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Check cache
+    const { data: cached } = await supabase
+      .from('changelog_summaries')
+      .select('summary')
+      .eq('latest_sha', latest_sha)
+      .maybeSingle();
+
+    if (cached) {
+      return new Response(JSON.stringify({ summary: cached.summary, cached: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -73,7 +92,11 @@ Deno.serve(async (req) => {
     const data = await response.json();
     const summary = data.choices?.[0]?.message?.content || 'No summary generated.';
 
-    return new Response(JSON.stringify({ summary }), {
+    // Cache the result
+    await supabase.from('changelog_summaries').delete().neq('latest_sha', latest_sha);
+    await supabase.from('changelog_summaries').insert({ latest_sha, summary });
+
+    return new Response(JSON.stringify({ summary, cached: false }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
