@@ -238,8 +238,7 @@ export function useChat() {
             body = `${msg.username} sent a photo 📷`;
           } else if (msg.fileUrl) {
             body = `${msg.username} sent a file: ${msg.fileName || 'attachment'}`;
-          } else if (isGifUrl(msg.text)) {
-            body = `${msg.username} sent a GIF`;
+          } else if (msg.replyTo) {
           } else if (msg.replyTo) {
             const replyText = msg.text ? `"${msg.text.slice(0, 80)}"` : '';
             body = `${msg.username} replied to ${msg.replyTo.username}: ${replyText}`;
