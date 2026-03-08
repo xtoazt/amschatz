@@ -558,6 +558,7 @@ export function useChat() {
       status: 'sent',
       imageUrl: gifUrl,
       imageExpiry: Date.now() + TEN_MINUTES,
+      isGif: true,
     };
 
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
