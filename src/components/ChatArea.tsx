@@ -480,7 +480,7 @@ export function ChatArea({
             />
           </div>
         )}
-        <div className="flex gap-1 items-center border border-border/60 rounded-xl bg-card/50 px-1">
+        <div className="flex gap-1 items-center border border-border/60 focus-within:border-border rounded-xl bg-card/50 px-1 transition-colors">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
