@@ -491,16 +491,17 @@ export function JoinScreen({ onJoin }: JoinScreenProps) {
           messages self-destruct in 10m · media purged on exit · nothing stored
         </motion.p>
         <motion.div
-          className="flex flex-col items-center gap-3"
+          className="flex items-center justify-center gap-4 pt-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 1.0 }}
         >
-          <Link to="/changelog" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/80 hover:text-foreground font-mono transition-colors">
-            <GitCommit className="w-3.5 h-3.5" /> changelog
+          <Link to="/changelog" className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground font-mono transition-colors">
+            <GitCommit className="w-3 h-3" /> changelog
           </Link>
-          <Link to="/features" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/80 hover:text-foreground font-mono transition-colors">
-            <Sparkles className="w-3.5 h-3.5" /> features
+          <span className="text-muted-foreground/20 text-[10px]">·</span>
+          <Link to="/features" className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground font-mono transition-colors">
+            <Sparkles className="w-3 h-3" /> features
           </Link>
         </motion.div>
       </motion.form>
