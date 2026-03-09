@@ -171,8 +171,6 @@ export const MessageBubble = memo(function MessageBubble({
   const hasFile = !!(msg.fileUrl && msg.fileName);
   const isFileVideo = msg.fileUrl ? isVideo(msg.fileUrl, msg.fileMimeType) : false;
   const isFileImageOrGif = msg.fileUrl ? isImageOrGif(msg.fileUrl, msg.fileMimeType) : true;
-  const reactions = msg.reactions || {};
-  const hasReactions = Object.keys(reactions).length > 0;
   const showUsername = !isOwn && groupInfo.isFirstInGroup;
   const radiusClass = getBubbleRadius(isOwn, groupInfo);
 
