@@ -1,19 +1,38 @@
-## Plan: Admin Authentication, GIF Integration & Cleanup — COMPLETED
 
-### 1. Secure Admin Authentication ✅
-- `ADMIN_MASTER_KEY` stored as backend secret
-- `verify-admin` edge function with constant-time comparison
-- `AdminAuthOverlay` terminal-style component (black bg, green monospace)
-- `sessionStorage` persistence for admin status
-- `isRoomCreator` removed from ChatState and all references
 
-### 2. GIF Integration (Klipy API) ✅
-- `KLIPY_API_KEY` stored as backend secret
-- `gif-search` edge function proxying to Klipy GIF Search API
-- `GifPicker` component with monochromatic grid, grayscale filter, color on hover
-- GIFs sent as ephemeral messages with 12-hour imageExpiry
+## Plan: Remove Emoji Reactions Feature
 
-### 3. Cleanup ✅
-- `exportHistory` removed (dead code)
-- Unused `ChatMessage` import removed from JoinScreen
-- `importedMessages` param removed from JoinScreen onJoin signature
+Remove all reaction-related code across the app. This touches 5 files (plus one file deletion).
+
+### Changes
+
+**1. Delete `src/components/chat/ReactionPicker.tsx`** — entire file removed.
+
+**2. Delete `src/hooks/use-frequent-reactions.ts`** — entire file removed.
+
+**3. `src/components/chat/MessageBubble.tsx`**
+- Remove `ReactionPicker` import
+- Remove `onReact`, `quickReactions`, `frequentlyUsed`, `recordReaction` from props interface
+- Remove `showReactionPicker` state
+- Remove `handleReact` function
+- Remove `onDoubleClick` handler from bubble div
+- Remove the reactions display block (`hasReactions` section with emoji buttons)
+- Remove the `AnimatePresence` block that shows `ReactionPicker`
+- Remove "React" context menu item
+
+**4. `src/components/ChatArea.tsx`**
+- Remove `useFrequentReactions` import and hook call
+- Remove `onReact` from props interface and destructuring
+- Stop passing `onReact`, `quickReactions`, `frequentlyUsed`, `recordReaction` to `MessageBubble`
+
+**5. `src/pages/Index.tsx`**
+- Remove `onReact={reactToMessage}` prop from `ChatArea`
+
+**6. `src/hooks/use-chat.ts`**
+- Remove `toggleReaction` function
+- Remove `reactToMessage` from the hook's return and implementation
+- Remove reaction-related broadcast handling
+
+**7. `src/types/chat.ts`**
+- Remove `reactions` field from `ChatMessage` interface
+
