@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '@/hooks/use-chat';
 import { useScreenshotDetect } from '@/hooks/use-screenshot-detect';
 import { JoinScreen } from '@/components/JoinScreen';
@@ -11,7 +12,7 @@ const Index = () => {
   const {
     state, joinRoom, leaveRoom, sendMessage, sendTyping,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage, sendGif,
-    broadcastScreenshot, kickUser, reactToMessage,
+    broadcastScreenshot, kickUser,
   } = useChat();
   const [adminOpen, setAdminOpen] = useState(false);
   const [authOverlay, setAuthOverlay] = useState(false);
@@ -63,61 +64,76 @@ const Index = () => {
     return { error: result.error };
   };
 
-  if (!state.isJoined) {
-    return <JoinScreen onJoin={handleJoin} />;
-  }
-
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <ChatSidebar
-        roomCode={state.roomCode}
-        users={state.users}
-        currentUser={state.username}
-        onLeave={leaveRoom}
-      />
-      <ChatArea
-        messages={state.messages}
-        currentUser={state.username}
-        roomCode={state.roomCode}
-        users={state.users}
-        notificationsEnabled={state.notificationsEnabled}
-        typingUsers={state.typingUsers}
-        frozen={state.frozen}
-        frozenBy={state.frozenBy}
-        nuking={nuking}
-        isPasswordProtected={state.isPasswordProtected}
-        uiScale={uiScale}
-        onScaleChange={handleScaleChange}
-        onSend={handleSend}
-        onTyping={sendTyping}
-        onToggleNotifications={toggleNotifications}
-        onLeave={leaveRoom}
-        onEdit={editMessage}
-        onUnsend={unsendMessage}
-        onSendImage={sendImage}
-        onSendGif={sendGif}
-        onReact={reactToMessage}
-      />
-      {authOverlay && (
-        <AdminAuthOverlay
-          onSuccess={() => { setAuthOverlay(false); setAdminOpen(true); }}
-          onCancel={() => setAuthOverlay(false)}
-        />
+    <AnimatePresence mode="wait">
+      {!state.isJoined ? (
+        <motion.div
+          key="join"
+          initial={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, scale: 0.96, filter: 'blur(6px)' }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className="h-screen w-full"
+        >
+          <JoinScreen onJoin={handleJoin} />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="chat"
+          initial={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }}
+          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="flex h-screen w-full overflow-hidden"
+        >
+          <ChatSidebar
+            roomCode={state.roomCode}
+            users={state.users}
+            currentUser={state.username}
+            onLeave={leaveRoom}
+          />
+          <ChatArea
+            messages={state.messages}
+            currentUser={state.username}
+            roomCode={state.roomCode}
+            users={state.users}
+            notificationsEnabled={state.notificationsEnabled}
+            typingUsers={state.typingUsers}
+            frozen={state.frozen}
+            frozenBy={state.frozenBy}
+            nuking={nuking}
+            isPasswordProtected={state.isPasswordProtected}
+            uiScale={uiScale}
+            onScaleChange={handleScaleChange}
+            onSend={handleSend}
+            onTyping={sendTyping}
+            onToggleNotifications={toggleNotifications}
+            onLeave={leaveRoom}
+            onEdit={editMessage}
+            onUnsend={unsendMessage}
+            onSendImage={sendImage}
+            onSendGif={sendGif}
+          />
+          {authOverlay && (
+            <AdminAuthOverlay
+              onSuccess={() => { setAuthOverlay(false); setAdminOpen(true); }}
+              onCancel={() => setAuthOverlay(false)}
+            />
+          )}
+          {adminOpen && (
+            <AdminPanel
+              messages={state.messages}
+              users={state.users}
+              userCount={state.users.length}
+              frozen={state.frozen}
+              onNuke={handleNuke}
+              onFreeze={freezeChat}
+              onAnnounce={sendAnnouncement}
+              onKick={kickUser}
+              onClose={() => setAdminOpen(false)}
+            />
+          )}
+        </motion.div>
       )}
-      {adminOpen && (
-        <AdminPanel
-          messages={state.messages}
-          users={state.users}
-          userCount={state.users.length}
-          frozen={state.frozen}
-          onNuke={handleNuke}
-          onFreeze={freezeChat}
-          onAnnounce={sendAnnouncement}
-          onKick={kickUser}
-          onClose={() => setAdminOpen(false)}
-        />
-      )}
-    </div>
+    </AnimatePresence>
   );
 };
 

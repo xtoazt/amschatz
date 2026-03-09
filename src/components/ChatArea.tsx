@@ -13,7 +13,6 @@ import { VideoInspector, InspectedVideo } from '@/components/chat/VideoInspector
 import { ReplyPreview } from '@/components/chat/ReplyPreview';
 import { ACCEPTED_FILE_TYPES } from '@/components/chat/FileHelpers';
 import { ChatSidebar } from '@/components/ChatSidebar';
-import { useFrequentReactions } from '@/hooks/use-frequent-reactions';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
@@ -36,7 +35,6 @@ interface ChatAreaProps {
   onUnsend: (messageId: string) => void;
   onSendImage: (file: File, onProgress?: (p: number) => void) => void;
   onSendGif: (url: string) => void;
-  onReact: (messageId: string, emoji: string) => void;
 }
 
 export function ChatArea({
@@ -60,7 +58,6 @@ export function ChatArea({
   onUnsend,
   onSendImage,
   onSendGif,
-  onReact,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -209,7 +206,6 @@ export function ChatArea({
   const handleDrop = (e: React.DragEvent) => { e.preventDefault(); dragCounter.current = 0; setDragging(false); const file = e.dataTransfer.files[0]; if (file) handleFileUpload(file); };
 
   const isInputDisabled = frozen && frozenBy !== currentUser;
-  const { quickReactions, frequentlyUsed, recordReaction } = useFrequentReactions();
 
   const groupedMessages = useMemo(() => {
     return messages.map((msg, i) => {
@@ -237,7 +233,7 @@ export function ChatArea({
       )}
 
       {/* Header */}
-      <header className="h-12 flex items-center px-4 shrink-0 bg-card/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-20">
+      <header className="h-12 flex items-center px-4 shrink-0 bg-card/60 backdrop-blur-xl border-b border-border/30 shadow-[0_1px_6px_rgba(0,0,0,0.4)] sticky top-0 z-20">
         <button
           onClick={() => setMobileSidebarOpen(true)}
           className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors md:hidden"
@@ -250,11 +246,15 @@ export function ChatArea({
             <span className="text-[10px] font-mono">locked</span>
           </div>
         )}
-        <div className="flex-1" />
+        <div className="flex-1 flex justify-center">
+          <span className="text-[10px] font-mono text-muted-foreground/50 tracking-wider select-none">
+            {'•'.repeat(Math.min(roomCode.length, 12))}
+          </span>
+        </div>
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors">
+              <button className="p-2 rounded-md text-foreground transition-colors">
                 <ZoomIn className="w-4 h-4" />
               </button>
             </PopoverTrigger>
@@ -306,9 +306,14 @@ export function ChatArea({
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            <span className="text-sm font-mono text-muted-foreground/40 select-none void-pulse">
-              say something into the void
-            </span>
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-sm font-mono text-muted-foreground/30 select-none void-pulse">
+                say something into the void
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground/15 select-none">
+                messages are ephemeral
+              </span>
+            </div>
           </motion.div>
         )}
 
@@ -334,16 +339,12 @@ export function ChatArea({
                   onEdit={handleStartEdit}
                   onUnsend={onUnsend}
                   onReply={setReplyingTo}
-                  onReact={onReact}
                   onScrollToMessage={scrollToMessage}
                   editingId={editingId}
                   editText={editText}
                   onEditTextChange={setEditText}
                   onEditSubmit={handleEditSubmit}
                   onEditCancel={handleEditCancel}
-                  quickReactions={quickReactions}
-                  frequentlyUsed={frequentlyUsed}
-                  recordReaction={recordReaction}
                 />
               </div>
             ))}
@@ -433,16 +434,24 @@ export function ChatArea({
       </AnimatePresence>
 
       {/* Typing indicator */}
-      {typingUsers.length > 0 && (
-        <div className="px-4 pb-1 flex items-center gap-2">
-          <div className="bg-message-other rounded-2xl rounded-bl-sm px-3 py-2 flex items-center gap-1">
-            <span className="typing-dot w-1.5 h-1.5 rounded-full bg-muted-foreground inline-block" />
-            <span className="typing-dot w-1.5 h-1.5 rounded-full bg-muted-foreground inline-block" />
-            <span className="typing-dot w-1.5 h-1.5 rounded-full bg-muted-foreground inline-block" />
-          </div>
-          <span className="text-[11px] text-muted-foreground">{typingUsers.join(', ')}</span>
-        </div>
-      )}
+      <AnimatePresence>
+        {typingUsers.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.2 }}
+            className="px-4 pb-1 flex items-center gap-2"
+          >
+            <div className="bg-message-other rounded-2xl rounded-bl-sm px-2.5 py-1.5 flex items-center gap-1">
+              <span className="typing-dot w-1 h-1 rounded-full bg-muted-foreground inline-block" />
+              <span className="typing-dot w-1 h-1 rounded-full bg-muted-foreground inline-block" />
+              <span className="typing-dot w-1 h-1 rounded-full bg-muted-foreground inline-block" />
+            </div>
+            <span className="text-[10px] text-muted-foreground">{typingUsers.join(', ')}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* File input */}
       <input
@@ -476,7 +485,7 @@ export function ChatArea({
             />
           </div>
         )}
-        <div className="flex gap-1 items-center border border-border/60 rounded-xl bg-card/50 px-1">
+        <div className="flex gap-1 items-center border border-border/30 focus-within:border-border/60 rounded-xl bg-card/40 backdrop-blur-sm px-1 transition-all duration-200">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -492,7 +501,7 @@ export function ChatArea({
             onChange={handleInputChange}
             placeholder={isInputDisabled ? 'Chat is frozen' : 'Message'}
             disabled={isInputDisabled}
-            className="flex-1 bg-transparent py-2.5 px-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans"
+            className="flex-1 bg-transparent py-2.5 px-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             maxLength={2000}
           />
           {input.length > 1800 && (
@@ -503,7 +512,7 @@ export function ChatArea({
           <motion.button
             type="submit"
             disabled={!input.trim() || isInputDisabled}
-            className="bg-primary text-primary-foreground p-2.5 rounded-lg hover:opacity-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+            className="bg-primary text-primary-foreground p-2 rounded-lg hover:opacity-90 transition-all disabled:opacity-10 disabled:cursor-not-allowed"
             whileTap={{ scale: 0.9, rotate: -12 }}
           >
             <Send className="w-4 h-4" />

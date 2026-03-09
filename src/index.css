@@ -38,7 +38,7 @@
 
     --message-own: 0 0% 100%;
     --message-own-foreground: 0 0% 0%;
-    --message-other: 0 0% 11%;
+    --message-other: 0 0% 14%;
     --message-other-foreground: 0 0% 100%;
     --online-dot: 0 0% 55%;
 
@@ -61,7 +61,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'JetBrains Mono', monospace;
   }
 }
 
@@ -221,4 +221,13 @@
   background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.7), transparent);
   background-size: 200% 100%;
   animation: marker-shimmer 2s ease-in-out;
+}
+
+/* Subtle hover lift for interactive cards */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.05);
 }

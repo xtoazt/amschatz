@@ -8,27 +8,6 @@ import { toast } from 'sonner';
 const generateId = () => Math.random().toString(36).substring(2, 12);
 const TEN_MINUTES = 10 * 60 * 1000;
 
-/** Toggle a user in a reaction emoji's user list, returning updated reactions or undefined if empty */
-function toggleReaction(
-  reactions: Record<string, string[]> | undefined,
-  emoji: string,
-  username: string,
-): Record<string, string[]> | undefined {
-  const updated = { ...(reactions || {}) };
-  const users = [...(updated[emoji] || [])];
-  const idx = users.indexOf(username);
-  if (idx >= 0) {
-    users.splice(idx, 1);
-    if (users.length === 0) {
-      delete updated[emoji];
-    } else {
-      updated[emoji] = users;
-    }
-  } else {
-    updated[emoji] = [...users, username];
-  }
-  return Object.keys(updated).length > 0 ? updated : undefined;
-}
 
 // Rate limiting config
 const RATE_LIMIT_COUNT = 5;
@@ -57,7 +36,6 @@ const ChatMessageSchema = z.object({
   fileSize: z.number().optional(),
   fileMimeType: z.string().max(100).optional(),
   replyTo: ReplyToSchema,
-  reactions: z.record(z.array(z.string().max(20))).optional(),
 });
 
 const TypingSchema = z.object({ username: z.string().max(20) });
@@ -68,7 +46,6 @@ const EditSchema = z.object({ messageId: z.string().max(50), newText: z.string()
 const UnsendSchema = z.object({ messageId: z.string().max(50) });
 const ScreenshotSchema = z.object({ username: z.string().max(20) });
 const KickSchema = z.object({ username: z.string().max(20) });
-const ReactionSchema = z.object({ messageId: z.string().max(50), emoji: z.string().max(4), username: z.string().max(20) });
 
 function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
   const result = schema.safeParse(data);
@@ -249,6 +226,8 @@ export function useChat() {
             } else if (msg.replyTo) {
               const replyText = msg.text ? `"${msg.text.slice(0, 80)}"` : '';
               body = `${msg.username} replied to ${msg.replyTo.username}: ${replyText}`;
+            } else if (msg.text && /https?:\/\/[^\s]/.test(msg.text)) {
+              body = `${msg.username} sent a link 🔗`;
             } else if (msg.text) {
               const truncated = msg.text.length > 100 ? msg.text.slice(0, 100) + '…' : msg.text;
               body = `${msg.username} said: "${truncated}"`;
@@ -401,16 +380,6 @@ export function useChat() {
         }
       });
 
-      channel.on('broadcast', { event: 'reaction' }, (payload) => {
-        const parsed = safeParse(ReactionSchema, payload.payload);
-        if (!parsed) return;
-        setState(prev => ({
-          ...prev,
-          messages: prev.messages.map(m =>
-            m.id !== parsed.messageId ? m : { ...m, reactions: toggleReaction(m.reactions, parsed.emoji, parsed.username) }
-          ),
-        }));
-      });
 
       // History sync: respond to requests from rejoining users
       channel.on('broadcast', { event: 'request-history' }, () => {
@@ -780,22 +749,9 @@ export function useChat() {
     }));
   }, []);
 
-  const reactToMessage = useCallback((messageId: string, emoji: string) => {
-    const username = usernameRef.current;
-    setState(prev => ({
-      ...prev,
-      messages: prev.messages.map(m =>
-        m.id !== messageId ? m : { ...m, reactions: toggleReaction(m.reactions, emoji, username) }
-      ),
-    }));
-    if (channelRef.current) {
-      channelRef.current.send({ type: 'broadcast', event: 'reaction', payload: { messageId, emoji, username } });
-    }
-  }, []);
-
   return {
     state, joinRoom, leaveRoom, sendMessage, sendTyping, sendGif,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
-    broadcastScreenshot, kickUser, reactToMessage,
+    broadcastScreenshot, kickUser,
   };
 }

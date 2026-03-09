@@ -1,6 +1,6 @@
-import { memo, useState } from 'react';
+import { memo } from 'react';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChatMessage } from '@/types/chat';
 import {
   ContextMenu,
@@ -9,6 +9,7 @@ import {
   ContextMenuItem,
 } from '@/components/ui/context-menu';
 import { ExternalLink } from 'lucide-react';
+import { LinkPreview } from './LinkPreview';
 import { toast } from 'sonner';
 import { StatusIcon } from './StatusIcon';
 import { ImageAttachment } from './ImageAttachment';
@@ -17,7 +18,6 @@ import { VideoAttachment } from './VideoAttachment';
 import { isImageOrGif, isImageExpired, isVideo } from './FileHelpers';
 import type { InspectedVideo } from './VideoInspector';
 import { SelfDestructTimer } from './SelfDestructTimer';
-import { ReactionPicker } from './ReactionPicker';
 import type { InspectedFile } from './FileInspector';
 import type { ReplyTo } from '@/types/chat';
 
@@ -38,19 +38,23 @@ interface MessageBubbleProps {
   onEdit: (id: string, text: string) => void;
   onUnsend: (id: string) => void;
   onReply: (replyTo: ReplyTo) => void;
-  onReact: (messageId: string, emoji: string) => void;
   onScrollToMessage?: (id: string) => void;
   editingId: string | null;
   editText: string;
   onEditTextChange: (text: string) => void;
   onEditSubmit: (id: string) => void;
   onEditCancel: () => void;
-  quickReactions: string[];
-  frequentlyUsed: string[];
-  recordReaction: (emoji: string) => void;
 }
 
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
+const IMAGE_EXT_RE = /\.(gif|png|jpg|jpeg|webp|svg)(\?|$)/i;
+
+function extractFirstUrl(text: string): string | null {
+  URL_RE.lastIndex = 0;
+  const m = URL_RE.exec(text);
+  if (m && !IMAGE_EXT_RE.test(m[0])) return m[0];
+  return null;
+}
 
 function renderMessageText(text: string) {
   const parts: (string | JSX.Element)[] = [];
@@ -119,18 +123,13 @@ export const MessageBubble = memo(function MessageBubble({
   onEdit,
   onUnsend,
   onReply,
-  onReact,
   onScrollToMessage,
   editingId,
   editText,
   onEditTextChange,
   onEditSubmit,
   onEditCancel,
-  quickReactions,
-  frequentlyUsed,
-  recordReaction,
 }: MessageBubbleProps) {
-  const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   if (msg.type === 'system') {
     return (
@@ -181,15 +180,8 @@ export const MessageBubble = memo(function MessageBubble({
   const hasFile = !!(msg.fileUrl && msg.fileName);
   const isFileVideo = msg.fileUrl ? isVideo(msg.fileUrl, msg.fileMimeType) : false;
   const isFileImageOrGif = msg.fileUrl ? isImageOrGif(msg.fileUrl, msg.fileMimeType) : true;
-  const reactions = msg.reactions || {};
-  const hasReactions = Object.keys(reactions).length > 0;
   const showUsername = !isOwn && groupInfo.isFirstInGroup;
   const radiusClass = getBubbleRadius(isOwn, groupInfo);
-
-  const handleReact = (emoji: string) => {
-    onReact(msg.id, emoji);
-    setShowReactionPicker(false);
-  };
 
   const bubble = (
     <div className={`max-w-[75%] space-y-0.5 ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
@@ -217,16 +209,15 @@ export const MessageBubble = memo(function MessageBubble({
               if (e.key === 'Enter') onEditSubmit(msg.id);
               if (e.key === 'Escape') onEditCancel();
             }}
-            className="flex-1 bg-input rounded-lg py-2 px-3 text-sm text-foreground outline-none"
+            className="flex-1 bg-input rounded-2xl py-2 px-3.5 text-sm text-foreground outline-none"
           />
         </div>
       ) : (
         <div
-          onDoubleClick={() => { recordReaction('⚡'); onReact(msg.id, '⚡'); }}
-          className={`px-3 py-2 text-sm leading-relaxed transition-[filter] duration-150 hover:brightness-110 w-fit max-w-full select-none ${radiusClass} ${
+          className={`px-3.5 py-2 text-[13px] leading-relaxed transition-all duration-150 hover:brightness-110 w-fit max-w-full select-none ${radiusClass} ${
             isOwn
-              ? 'bg-message-own text-message-own-foreground'
-              : 'bg-message-other text-message-other-foreground'
+              ? 'bg-message-own text-message-own-foreground shadow-[0_1px_4px_rgba(255,255,255,0.08)]'
+              : 'bg-message-other text-message-other-foreground shadow-[0_1px_3px_rgba(0,0,0,0.2)]'
           }`}
         >
           {msg.imageUrl && (
@@ -255,30 +246,7 @@ export const MessageBubble = memo(function MessageBubble({
             />
           )}
           {msg.text && renderMessageText(msg.text)}
-        </div>
-      )}
-
-      {hasReactions && (
-        <div className="flex flex-wrap gap-1 ml-1 mt-0.5">
-          {Object.entries(reactions).map(([emoji, users]) => (
-            <motion.button
-              key={emoji}
-              onClick={() => onReact(msg.id, emoji)}
-              whileTap={{ scale: 1.4, rotate: 8 }}
-              whileHover={{ scale: 1.1 }}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] border transition-colors ${
-                users.includes(currentUser)
-                  ? 'border-foreground/30 bg-muted'
-                  : 'border-border bg-card hover:border-foreground/20'
-              }`}
-            >
-              <span>{emoji}</span>
-              <span className="text-muted-foreground font-mono text-[10px]">{users.length}</span>
-            </motion.button>
-          ))}
+          {msg.text && !msg.isGif && (() => { const u = extractFirstUrl(msg.text); return u ? <LinkPreview url={u} /> : null; })()}
         </div>
       )}
 
@@ -291,13 +259,6 @@ export const MessageBubble = memo(function MessageBubble({
         </div>
       )}
 
-      <AnimatePresence>
-        {showReactionPicker && (
-          <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-            <ReactionPicker onSelect={handleReact} quickReactions={quickReactions} frequentlyUsed={frequentlyUsed} recordReaction={recordReaction} />
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 
@@ -313,9 +274,6 @@ export const MessageBubble = memo(function MessageBubble({
           Copy
         </ContextMenuItem>
       )}
-      <ContextMenuItem onSelect={() => setShowReactionPicker(prev => !prev)}>
-        React
-      </ContextMenuItem>
     </ContextMenuContent>
   );
 
