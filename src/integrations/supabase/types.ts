@@ -14,7 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cached_commits: {
+        Row: {
+          author_date: string
+          author_name: string
+          created_at: string
+          html_url: string
+          id: string
+          message: string
+          sha: string
+        }
+        Insert: {
+          author_date: string
+          author_name: string
+          created_at?: string
+          html_url: string
+          id?: string
+          message: string
+          sha: string
+        }
+        Update: {
+          author_date?: string
+          author_name?: string
+          created_at?: string
+          html_url?: string
+          id?: string
+          message?: string
+          sha?: string
+        }
+        Relationships: []
+      }
+      changelog_summaries: {
+        Row: {
+          created_at: string
+          id: string
+          latest_sha: string
+          summary: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latest_sha: string
+          summary: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latest_sha?: string
+          summary?: string
+        }
+        Relationships: []
+      }
+      commits_cache_meta: {
+        Row: {
+          id: string
+          latest_sha: string
+          total_commits: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          latest_sha: string
+          total_commits?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          latest_sha?: string
+          total_commits?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      feature_summaries: {
+        Row: {
+          created_at: string
+          id: string
+          latest_sha: string
+          summary: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latest_sha: string
+          summary: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latest_sha?: string
+          summary?: string
+        }
+        Relationships: []
+      }
+      room_passwords: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          password_hash: string
+          room_code: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          password_hash: string
+          room_code: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          password_hash?: string
+          room_code?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

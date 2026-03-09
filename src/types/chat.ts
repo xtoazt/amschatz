@@ -1,3 +1,9 @@
+export interface ReplyTo {
+  id: string;
+  username: string;
+  text: string;
+}
+
 export interface ChatMessage {
   id: string;
   username: string;
@@ -9,11 +15,16 @@ export interface ChatMessage {
   deleted?: boolean;
   imageUrl?: string;
   imageExpiry?: number;
+  isGif?: boolean;
   // File attachment properties
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
   fileMimeType?: string;
+  // Reply
+  replyTo?: ReplyTo;
+  // Reactions: emoji → list of usernames
+  reactions?: Record<string, string[]>;
 }
 
 export interface RoomUser {
@@ -31,4 +42,5 @@ export interface ChatState {
   typingUsers: string[];
   frozen: boolean;
   frozenBy: string | null;
+  isPasswordProtected: boolean;
 }

@@ -1,0 +1,1 @@
+DELETE FROM changelog_summaries; DELETE FROM feature_summaries;

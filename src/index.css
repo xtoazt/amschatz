@@ -84,12 +84,12 @@
 
 @keyframes typing-dot {
   0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-3px); }
+  30% { opacity: 1; transform: translateY(-4px); }
 }
 
-.typing-dot:nth-child(1) { animation: typing-dot 1.4s infinite 0s; }
-.typing-dot:nth-child(2) { animation: typing-dot 1.4s infinite 0.2s; }
-.typing-dot:nth-child(3) { animation: typing-dot 1.4s infinite 0.4s; }
+.typing-dot:nth-child(1) { animation: typing-dot 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite 0s; }
+.typing-dot:nth-child(2) { animation: typing-dot 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.15s; }
+.typing-dot:nth-child(3) { animation: typing-dot 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.3s; }
 
 /* Jiggle animation for notification toggle */
 @keyframes jiggle {
@@ -107,4 +107,118 @@
 
 .animate-jiggle {
   animation: jiggle 0.5s ease-in-out;
+}
+
+/* Grain texture overlay */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* TV static glitch effect */
+.glitch-text {
+  animation: glitch-static 0.3s steps(2, end);
+  position: relative;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: 'v0id';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch-text::before {
+  animation: glitch-clip-1 0.3s steps(3, end);
+  clip-path: inset(20% 0 40% 0);
+  color: hsl(var(--foreground));
+  text-shadow: -2px 0 hsl(var(--foreground) / 0.7);
+}
+
+.glitch-text::after {
+  animation: glitch-clip-2 0.3s steps(3, end);
+  clip-path: inset(60% 0 10% 0);
+  color: hsl(var(--foreground));
+  text-shadow: 2px 0 hsl(var(--foreground) / 0.7);
+}
+
+@keyframes glitch-static {
+  0% { transform: translate(0); opacity: 1; }
+  10% { transform: translate(-2px, 1px); opacity: 0.85; }
+  20% { transform: translate(2px, -1px); opacity: 1; }
+  30% { transform: translate(0, 2px); opacity: 0.9; }
+  40% { transform: translate(-1px, -2px); opacity: 0.7; }
+  50% { transform: translate(3px, 0); opacity: 1; }
+  60% { transform: translate(-3px, 1px); opacity: 0.8; }
+  70% { transform: translate(0); opacity: 0.95; }
+  80% { transform: translate(1px, -1px); opacity: 0.85; }
+  90% { transform: translate(-1px, 2px); opacity: 1; }
+  100% { transform: translate(0); opacity: 1; }
+}
+
+@keyframes glitch-clip-1 {
+  0% { clip-path: inset(20% 0 40% 0); transform: translate(-3px, 0); }
+  33% { clip-path: inset(50% 0 10% 0); transform: translate(2px, 0); }
+  66% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 0); }
+  100% { clip-path: inset(20% 0 40% 0); transform: translate(0); }
+}
+
+@keyframes glitch-clip-2 {
+  0% { clip-path: inset(60% 0 10% 0); transform: translate(3px, 0); }
+  33% { clip-path: inset(10% 0 50% 0); transform: translate(-2px, 0); }
+  66% { clip-path: inset(40% 0 20% 0); transform: translate(1px, 0); }
+  100% { clip-path: inset(60% 0 10% 0); transform: translate(0); }
+}
+
+/* Join button breathing glow — enhanced */
+.join-button-glow:not(:disabled) {
+  box-shadow: 0 0 0 0 hsl(var(--foreground) / 0);
+  animation: button-breathe 3s ease-in-out infinite;
+}
+
+@keyframes button-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--foreground) / 0); }
+  50% { box-shadow: 0 0 24px 3px hsl(var(--foreground) / 0.1), 0 0 60px 8px hsl(var(--foreground) / 0.03); }
+}
+
+/* Smooth ambient pulse for the void empty state */
+@keyframes void-pulse {
+  0%, 100% { opacity: 0.35; filter: blur(0px); }
+  50% { opacity: 0.55; filter: blur(0.5px); }
+}
+
+.void-pulse {
+  animation: void-pulse 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Smooth input focus ring animation */
+@keyframes ring-expand {
+  from { box-shadow: 0 0 0 0 hsl(var(--ring) / 0.4); }
+  to { box-shadow: 0 0 0 2px hsl(var(--ring) / 0.15); }
+}
+
+.input-focus-ring:focus {
+  animation: ring-expand 0.2s ease-out forwards;
+}
+
+/* Unread marker shimmer */
+@keyframes marker-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.unread-marker-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.7), transparent);
+  background-size: 200% 100%;
+  animation: marker-shimmer 2s ease-in-out;
 }

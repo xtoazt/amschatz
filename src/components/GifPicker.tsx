@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import poweredByKlipy from '@/assets/powered-by-klipy.svg';
 import { Search, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -148,8 +149,8 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
         </div>
 
         {/* Attribution */}
-        <div className="px-2 py-1.5 border-t border-foreground bg-background">
-          <span className="text-[10px] font-mono text-foreground/70 tracking-wide">Powered by KLIPY</span>
+        <div className="px-2 py-1.5 border-t border-foreground bg-background flex items-center">
+          <img src={poweredByKlipy} alt="Powered by KLIPY" className="h-4 object-contain" />
         </div>
       </PopoverContent>
     </Popover>

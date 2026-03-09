@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useChat } from '@/hooks/use-chat';
 import { useScreenshotDetect } from '@/hooks/use-screenshot-detect';
 import { JoinScreen } from '@/components/JoinScreen';
@@ -11,14 +11,30 @@ const Index = () => {
   const {
     state, joinRoom, leaveRoom, sendMessage, sendTyping,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage, sendGif,
-    checkUsernameAvailable, broadcastScreenshot,
+    broadcastScreenshot, kickUser, reactToMessage,
   } = useChat();
   const [adminOpen, setAdminOpen] = useState(false);
   const [authOverlay, setAuthOverlay] = useState(false);
+  const [nuking, setNuking] = useState(false);
+  const [uiScale, setUiScale] = useState(() => {
+    const saved = localStorage.getItem('v0id-ui-scale');
+    return saved ? Number(saved) : 100;
+  });
+
+  const handleScaleChange = useCallback((val: number[]) => {
+    const s = val[0];
+    setUiScale(s);
+    localStorage.setItem('v0id-ui-scale', String(s));
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${uiScale}%`;
+    return () => { document.documentElement.style.fontSize = ''; };
+  }, [uiScale]);
 
   useScreenshotDetect(broadcastScreenshot, state.isJoined);
 
-  const handleSend = (text: string) => {
+  const handleSend = (text: string, replyTo?: { id: string; username: string; text: string }) => {
     if (text.trim() === '/admin') {
       if (sessionStorage.getItem('is_admin') === 'true') {
         setAdminOpen(true);
@@ -27,20 +43,24 @@ const Index = () => {
       }
       return;
     }
-    sendMessage(text);
+    sendMessage(text, replyTo);
   };
 
-  const handleJoin = async (username: string, roomCode: string) => {
-    // Admin bypass: skip duplicate check
+  const handleNuke = useCallback(() => {
+    setAdminOpen(false);
+    setNuking(true);
+    setTimeout(() => {
+      nukeRoom();
+    }, 800);
+    setTimeout(() => {
+      setNuking(false);
+    }, 2500);
+  }, [nukeRoom]);
+
+  const handleJoin = async (username: string, roomCode: string, isPasswordProtected: boolean) => {
     const isAdmin = sessionStorage.getItem('is_admin') === 'true';
-    if (!isAdmin) {
-      const available = await checkUsernameAvailable(username, roomCode);
-      if (!available) {
-        return { error: 'Username already active in this void. Please choose another identity.' };
-      }
-    }
-    joinRoom(username, roomCode);
-    return { error: null };
+    const result = await joinRoom(username, roomCode, isAdmin, isPasswordProtected);
+    return { error: result.error };
   };
 
   if (!state.isJoined) {
@@ -52,16 +72,22 @@ const Index = () => {
       <ChatSidebar
         roomCode={state.roomCode}
         users={state.users}
+        currentUser={state.username}
         onLeave={leaveRoom}
       />
       <ChatArea
         messages={state.messages}
         currentUser={state.username}
         roomCode={state.roomCode}
+        users={state.users}
         notificationsEnabled={state.notificationsEnabled}
         typingUsers={state.typingUsers}
         frozen={state.frozen}
         frozenBy={state.frozenBy}
+        nuking={nuking}
+        isPasswordProtected={state.isPasswordProtected}
+        uiScale={uiScale}
+        onScaleChange={handleScaleChange}
         onSend={handleSend}
         onTyping={sendTyping}
         onToggleNotifications={toggleNotifications}
@@ -70,6 +96,7 @@ const Index = () => {
         onUnsend={unsendMessage}
         onSendImage={sendImage}
         onSendGif={sendGif}
+        onReact={reactToMessage}
       />
       {authOverlay && (
         <AdminAuthOverlay
@@ -80,11 +107,13 @@ const Index = () => {
       {adminOpen && (
         <AdminPanel
           messages={state.messages}
+          users={state.users}
           userCount={state.users.length}
           frozen={state.frozen}
-          onNuke={() => { nukeRoom(); setAdminOpen(false); }}
+          onNuke={handleNuke}
           onFreeze={freezeChat}
           onAnnounce={sendAnnouncement}
+          onKick={kickUser}
           onClose={() => setAdminOpen(false)}
         />
       )}

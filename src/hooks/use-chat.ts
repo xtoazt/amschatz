@@ -1,11 +1,44 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ChatMessage, RoomUser, ChatState } from '@/types/chat';
+import { ChatMessage, RoomUser, ChatState, ReplyTo } from '@/types/chat';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { toast } from 'sonner';
 
 const generateId = () => Math.random().toString(36).substring(2, 12);
 const TEN_MINUTES = 10 * 60 * 1000;
+
+/** Toggle a user in a reaction emoji's user list, returning updated reactions or undefined if empty */
+function toggleReaction(
+  reactions: Record<string, string[]> | undefined,
+  emoji: string,
+  username: string,
+): Record<string, string[]> | undefined {
+  const updated = { ...(reactions || {}) };
+  const users = [...(updated[emoji] || [])];
+  const idx = users.indexOf(username);
+  if (idx >= 0) {
+    users.splice(idx, 1);
+    if (users.length === 0) {
+      delete updated[emoji];
+    } else {
+      updated[emoji] = users;
+    }
+  } else {
+    updated[emoji] = [...users, username];
+  }
+  return Object.keys(updated).length > 0 ? updated : undefined;
+}
+
+// Rate limiting config
+const RATE_LIMIT_COUNT = 5;
+const RATE_LIMIT_WINDOW = 3000; // 3 seconds
+
+const ReplyToSchema = z.object({
+  id: z.string().max(50),
+  username: z.string().max(20),
+  text: z.string().max(200),
+}).optional();
 
 const ChatMessageSchema = z.object({
   id: z.string().max(50),
@@ -18,11 +51,13 @@ const ChatMessageSchema = z.object({
   deleted: z.boolean().optional(),
   imageUrl: z.string().url().max(2000).optional(),
   imageExpiry: z.number().optional(),
-  // File attachment fields
+  isGif: z.boolean().optional(),
   fileUrl: z.string().url().max(2000).optional(),
   fileName: z.string().max(255).optional(),
   fileSize: z.number().optional(),
   fileMimeType: z.string().max(100).optional(),
+  replyTo: ReplyToSchema,
+  reactions: z.record(z.array(z.string().max(20))).optional(),
 });
 
 const TypingSchema = z.object({ username: z.string().max(20) });
@@ -32,6 +67,8 @@ const FreezeSchema = z.object({ frozen: z.boolean(), by: z.string().max(20) });
 const EditSchema = z.object({ messageId: z.string().max(50), newText: z.string().max(5000) });
 const UnsendSchema = z.object({ messageId: z.string().max(50) });
 const ScreenshotSchema = z.object({ username: z.string().max(20) });
+const KickSchema = z.object({ username: z.string().max(20) });
+const ReactionSchema = z.object({ messageId: z.string().max(50), emoji: z.string().max(4), username: z.string().max(20) });
 
 function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
   const result = schema.safeParse(data);
@@ -42,32 +79,39 @@ function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
   return result.data;
 }
 
+const DEFAULT_ROOM_STATE: Omit<ChatState, 'notificationsEnabled'> = {
+  username: '',
+  roomCode: '',
+  messages: [],
+  users: [],
+  isJoined: false,
+  typingUsers: [],
+  frozen: false,
+  frozenBy: null,
+  isPasswordProtected: false,
+};
+
 export function useChat() {
   const [state, setState] = useState<ChatState>(() => {
     const savedNotif = typeof window !== 'undefined'
       ? localStorage.getItem('chat_notif_pref') === 'true'
       : false;
-    return {
-      username: '',
-      roomCode: '',
-      messages: [],
-      users: [],
-      isJoined: false,
-      notificationsEnabled: savedNotif,
-      typingUsers: [],
-      frozen: false,
-      frozenBy: null,
-    };
+    return { ...DEFAULT_ROOM_STATE, notificationsEnabled: savedNotif };
   });
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const notificationsRef = useRef(state.notificationsEnabled);
   const usernameRef = useRef(state.username);
+  const roomCodeRef = useRef(state.roomCode);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const sendTimestamps = useRef<number[]>([]);
+  const notifCooldownRef = useRef<number | null>(null);
+  const pendingNotifCount = useRef(0);
 
   useEffect(() => { notificationsRef.current = state.notificationsEnabled; }, [state.notificationsEnabled]);
   useEffect(() => { usernameRef.current = state.username; }, [state.username]);
+  useEffect(() => { roomCodeRef.current = state.roomCode; }, [state.roomCode]);
 
   useEffect(() => {
     return () => {
@@ -75,6 +119,42 @@ export function useChat() {
         supabase.removeChannel(channelRef.current);
       }
     };
+  }, []);
+
+  // Auto-delete expired messages (older than 10 minutes)
+  useEffect(() => {
+    if (!state.isJoined) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setState(prev => {
+        const filtered = prev.messages.filter(m => now - m.timestamp < TEN_MINUTES);
+        if (filtered.length === prev.messages.length) return prev;
+        return { ...prev, messages: filtered };
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [state.isJoined]);
+
+  // Rate limiter check
+  const checkRateLimit = useCallback((): boolean => {
+    const now = Date.now();
+    sendTimestamps.current = sendTimestamps.current.filter(t => now - t < RATE_LIMIT_WINDOW);
+    if (sendTimestamps.current.length >= RATE_LIMIT_COUNT) {
+      // Inject local system message
+      setState(prev => ({
+        ...prev,
+        messages: [...prev.messages, {
+          id: generateId(),
+          username: 'system',
+          text: '[SYSTEM]: RATE LIMITED — SLOW DOWN',
+          timestamp: Date.now(),
+          type: 'system',
+        }],
+      }));
+      return false;
+    }
+    sendTimestamps.current.push(now);
+    return true;
   }, []);
 
   // Window focus listener: mark all unread messages as read
@@ -88,7 +168,6 @@ export function useChat() {
 
         if (unreadIds.length === 0) return prev;
 
-        // Broadcast bulk read
         channelRef.current?.send({
           type: 'broadcast',
           event: 'bulk-read',
@@ -108,205 +187,368 @@ export function useChat() {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  /**
-   * Check if a username is available in the room before joining.
-   * Temporarily subscribes to the channel's presence to peek at current users.
-   */
-  const checkUsernameAvailable = useCallback(async (username: string, roomCode: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const peekChannel = supabase.channel(`room:${roomCode}:peek-${generateId()}`, {
-        config: { presence: { key: `_peek_${generateId()}` } },
-      });
-
-      const timeout = setTimeout(() => {
-        supabase.removeChannel(peekChannel);
-        resolve(true); // On timeout, allow join (fail-open)
-      }, 4000);
-
-      peekChannel.on('presence', { event: 'sync' }, () => {
-        const presenceState = peekChannel.presenceState();
-        const activeUsernames = Object.keys(presenceState);
-        const taken = activeUsernames.includes(username);
-        clearTimeout(timeout);
-        supabase.removeChannel(peekChannel);
-        resolve(!taken);
-      });
-
-      peekChannel.subscribe();
-    });
-  }, []);
-
-  const joinRoom = useCallback((username: string, roomCode: string) => {
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
-
-    const systemMsg: ChatMessage = {
-      id: generateId(),
-      username: 'system',
-      text: `${username} joined.`,
-      timestamp: Date.now(),
-      type: 'system',
-    };
-
-    setState(prev => ({
-      ...prev,
-      username,
-      roomCode,
-      isJoined: true,
-      messages: [systemMsg],
-      users: [],
-      typingUsers: [],
-      frozen: false,
-      frozenBy: null,
-    }));
-
-    const channel = supabase.channel(`room:${roomCode}`, {
-      config: { presence: { key: username } },
-    });
-
-    channel.on('broadcast', { event: 'message' }, (payload) => {
-      const msg = safeParse(ChatMessageSchema, payload.payload);
-      if (!msg) return;
-      if (msg.username === usernameRef.current) return;
-
-      const isFocused = document.hasFocus();
-      setState(prev => ({
-        ...prev,
-        messages: [...prev.messages, { ...msg, status: isFocused ? 'read' : 'delivered' } as ChatMessage],
-      }));
-
-      // If tab is focused, immediately send read receipt
-      if (isFocused && channelRef.current) {
-        channelRef.current.send({ type: 'broadcast', event: 'read', payload: { messageId: msg.id, reader: usernameRef.current } });
+  const joinRoom = useCallback((username: string, roomCode: string, skipDuplicateCheck = false, isPasswordProtected = false): Promise<{ error: string | null }> => {
+    return new Promise((resolveJoin) => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
       }
 
-      if (notificationsRef.current && document.hidden) {
-        new Notification(msg.username, { body: msg.text });
-      }
-    });
-
-    channel.on('broadcast', { event: 'system' }, (payload) => {
-      const msg = safeParse(ChatMessageSchema, payload.payload);
-      if (!msg) return;
-      setState(prev => ({ ...prev, messages: [...prev.messages, msg as ChatMessage] }));
-    });
-
-    channel.on('broadcast', { event: 'announcement' }, (payload) => {
-      const msg = safeParse(ChatMessageSchema, payload.payload);
-      if (!msg) return;
-      setState(prev => ({ ...prev, messages: [...prev.messages, msg as ChatMessage] }));
-    });
-
-    channel.on('broadcast', { event: 'typing' }, (payload) => {
-      const parsed = safeParse(TypingSchema, payload.payload);
-      if (!parsed) return;
-      const typingUser = parsed.username;
-      if (typingUser === usernameRef.current) return;
-
-      setState(prev => ({
-        ...prev,
-        typingUsers: prev.typingUsers.includes(typingUser) ? prev.typingUsers : [...prev.typingUsers, typingUser],
-      }));
-
-      if (remoteTypingTimeouts.current[typingUser]) clearTimeout(remoteTypingTimeouts.current[typingUser]);
-      remoteTypingTimeouts.current[typingUser] = setTimeout(() => {
-        setState(prev => ({ ...prev, typingUsers: prev.typingUsers.filter(u => u !== typingUser) }));
-        delete remoteTypingTimeouts.current[typingUser];
-      }, 3000);
-    });
-
-    channel.on('broadcast', { event: 'read' }, (payload) => {
-      const parsed = safeParse(ReadSchema, payload.payload);
-      if (!parsed) return;
-      setState(prev => ({
-        ...prev,
-        messages: prev.messages.map(m => m.id === parsed.messageId ? { ...m, status: 'read' } : m),
-      }));
-    });
-
-    channel.on('broadcast', { event: 'bulk-read' }, (payload) => {
-      const parsed = safeParse(BulkReadSchema, payload.payload);
-      if (!parsed) return;
-      setState(prev => ({
-        ...prev,
-        messages: prev.messages.map(m =>
-          parsed.messageIds.includes(m.id) ? { ...m, status: 'read' } : m
-        ),
-      }));
-    });
-
-    channel.on('broadcast', { event: 'nuke' }, () => {
-      setState(prev => ({
-        ...prev,
-        messages: [{
-          id: generateId(),
-          username: 'system',
-          text: 'Session purged.',
-          timestamp: Date.now(),
-          type: 'system',
-        }],
-      }));
-    });
-
-    channel.on('broadcast', { event: 'freeze' }, (payload) => {
-      const parsed = safeParse(FreezeSchema, payload.payload);
-      if (!parsed) return;
-      setState(prev => ({ ...prev, frozen: parsed.frozen, frozenBy: parsed.frozen ? parsed.by : null }));
-    });
-
-    channel.on('broadcast', { event: 'edit' }, (payload) => {
-      const parsed = safeParse(EditSchema, payload.payload);
-      if (!parsed) return;
-      setState(prev => ({
-        ...prev,
-        messages: prev.messages.map(m => m.id === parsed.messageId ? { ...m, text: parsed.newText, edited: true } : m),
-      }));
-    });
-
-    channel.on('broadcast', { event: 'unsend' }, (payload) => {
-      const parsed = safeParse(UnsendSchema, payload.payload);
-      if (!parsed) return;
-      setState(prev => ({
-        ...prev,
-        messages: prev.messages.map(m => m.id === parsed.messageId ? { ...m, text: '', deleted: true } : m),
-      }));
-    });
-
-    channel.on('broadcast', { event: 'screenshot' }, (payload) => {
-      const parsed = safeParse(ScreenshotSchema, payload.payload);
-      if (!parsed || parsed.username === usernameRef.current) return;
-      const alertMsg: ChatMessage = {
+      const systemMsg: ChatMessage = {
         id: generateId(),
         username: 'system',
-        text: `⚠ ${parsed.username} took a screenshot`,
+        text: `${username} joined.`,
         timestamp: Date.now(),
         type: 'system',
       };
-      setState(prev => ({ ...prev, messages: [...prev.messages, alertMsg] }));
-    });
 
-    channel.on('presence', { event: 'sync' }, () => {
-      const presenceState = channel.presenceState();
-      const users: RoomUser[] = Object.keys(presenceState).map(key => ({
-        username: key,
-        joinedAt: (presenceState[key]?.[0] as any)?.joinedAt ?? Date.now(),
+      setState(prev => ({
+        ...prev,
+        username,
+        roomCode,
+        isJoined: true,
+        messages: [systemMsg],
+        users: [],
+        typingUsers: [],
+        frozen: false,
+        frozenBy: null,
+        isPasswordProtected,
       }));
-      setState(prev => ({ ...prev, users }));
 
-      if (users.length === 0) {
-        setState(prev => ({ ...prev, messages: [] }));
-      }
+      const channel = supabase.channel(`room:${roomCode}`, {
+        config: { presence: { key: username } },
+      });
+
+      let duplicateChecked = false;
+
+      channel.on('broadcast', { event: 'message' }, (payload) => {
+        const msg = safeParse(ChatMessageSchema, payload.payload);
+        if (!msg) return;
+        if (msg.username === usernameRef.current) return;
+
+        const isFocused = document.hasFocus();
+        setState(prev => ({
+          ...prev,
+          messages: [...prev.messages, { ...msg, status: isFocused ? 'read' : 'delivered' } as ChatMessage],
+        }));
+
+        if (isFocused && channelRef.current) {
+          channelRef.current.send({ type: 'broadcast', event: 'read', payload: { messageId: msg.id, reader: usernameRef.current } });
+        }
+
+        if (notificationsRef.current && document.hidden) {
+          if (notifCooldownRef.current) {
+            pendingNotifCount.current++;
+          } else {
+            let body: string;
+            if (msg.isGif) {
+              body = `${msg.username} sent a GIF`;
+            } else if (msg.imageUrl) {
+              body = `${msg.username} sent a photo 📷`;
+            } else if (msg.fileUrl) {
+              body = `${msg.username} sent a file: ${msg.fileName || 'attachment'}`;
+            } else if (msg.replyTo) {
+              const replyText = msg.text ? `"${msg.text.slice(0, 80)}"` : '';
+              body = `${msg.username} replied to ${msg.replyTo.username}: ${replyText}`;
+            } else if (msg.text) {
+              const truncated = msg.text.length > 100 ? msg.text.slice(0, 100) + '…' : msg.text;
+              body = `${msg.username} said: "${truncated}"`;
+            } else {
+              body = `${msg.username} sent a message`;
+            }
+            new Notification(roomCodeRef.current, { body, icon: '/favicon.ico' });
+
+            notifCooldownRef.current = window.setTimeout(() => {
+              if (pendingNotifCount.current > 0) {
+                new Notification(roomCodeRef.current, {
+                  body: `+ ${pendingNotifCount.current} more message${pendingNotifCount.current > 1 ? 's' : ''}`,
+                  icon: '/favicon.ico',
+                });
+                pendingNotifCount.current = 0;
+              }
+              notifCooldownRef.current = null;
+            }, 3000);
+          }
+        }
+      });
+
+      const handleSystemOrAnnouncement = (payload: any) => {
+        const msg = safeParse(ChatMessageSchema, payload.payload);
+        if (!msg) return;
+        setState(prev => ({ ...prev, messages: [...prev.messages, msg as ChatMessage] }));
+      };
+
+      channel.on('broadcast', { event: 'system' }, handleSystemOrAnnouncement);
+      channel.on('broadcast', { event: 'announcement' }, handleSystemOrAnnouncement);
+
+      channel.on('broadcast', { event: 'typing' }, (payload) => {
+        const parsed = safeParse(TypingSchema, payload.payload);
+        if (!parsed) return;
+        const typingUser = parsed.username;
+        if (typingUser === usernameRef.current) return;
+
+        setState(prev => ({
+          ...prev,
+          typingUsers: prev.typingUsers.includes(typingUser) ? prev.typingUsers : [...prev.typingUsers, typingUser],
+        }));
+
+        if (remoteTypingTimeouts.current[typingUser]) clearTimeout(remoteTypingTimeouts.current[typingUser]);
+        remoteTypingTimeouts.current[typingUser] = setTimeout(() => {
+          setState(prev => ({ ...prev, typingUsers: prev.typingUsers.filter(u => u !== typingUser) }));
+          delete remoteTypingTimeouts.current[typingUser];
+        }, 3000);
+      });
+
+      channel.on('broadcast', { event: 'read' }, (payload) => {
+        const parsed = safeParse(ReadSchema, payload.payload);
+        if (!parsed) return;
+        setState(prev => ({
+          ...prev,
+          messages: prev.messages.map(m => m.id === parsed.messageId ? { ...m, status: 'read' } : m),
+        }));
+      });
+
+      channel.on('broadcast', { event: 'bulk-read' }, (payload) => {
+        const parsed = safeParse(BulkReadSchema, payload.payload);
+        if (!parsed) return;
+        setState(prev => ({
+          ...prev,
+          messages: prev.messages.map(m =>
+            parsed.messageIds.includes(m.id) ? { ...m, status: 'read' } : m
+          ),
+        }));
+      });
+
+      channel.on('broadcast', { event: 'nuke' }, () => {
+        setState(prev => ({
+          ...prev,
+          messages: [{
+            id: generateId(),
+            username: 'system',
+            text: 'Session purged.',
+            timestamp: Date.now(),
+            type: 'system',
+          }],
+        }));
+      });
+
+      channel.on('broadcast', { event: 'freeze' }, (payload) => {
+        const parsed = safeParse(FreezeSchema, payload.payload);
+        if (!parsed) return;
+        setState(prev => ({ ...prev, frozen: parsed.frozen, frozenBy: parsed.frozen ? parsed.by : null }));
+      });
+
+      channel.on('broadcast', { event: 'edit' }, (payload) => {
+        const parsed = safeParse(EditSchema, payload.payload);
+        if (!parsed) return;
+        setState(prev => ({
+          ...prev,
+          messages: prev.messages.map(m => m.id === parsed.messageId ? { ...m, text: parsed.newText, edited: true } : m),
+        }));
+      });
+
+      channel.on('broadcast', { event: 'unsend' }, (payload) => {
+        const parsed = safeParse(UnsendSchema, payload.payload);
+        if (!parsed) return;
+        setState(prev => ({
+          ...prev,
+          messages: prev.messages.map(m => m.id === parsed.messageId ? { ...m, text: '', deleted: true } : m),
+        }));
+      });
+
+      channel.on('broadcast', { event: 'screenshot' }, (payload) => {
+        const parsed = safeParse(ScreenshotSchema, payload.payload);
+        if (!parsed || parsed.username === usernameRef.current) return;
+        const alertMsg: ChatMessage = {
+          id: generateId(),
+          username: 'system',
+          text: `⚠ ${parsed.username} took a screenshot`,
+          timestamp: Date.now(),
+          type: 'system',
+        };
+        setState(prev => ({ ...prev, messages: [...prev.messages, alertMsg] }));
+      });
+
+      channel.on('broadcast', { event: 'kick' }, (payload) => {
+        const parsed = safeParse(KickSchema, payload.payload);
+        if (!parsed) return;
+        if (parsed.username === usernameRef.current) {
+          if (channelRef.current) {
+            channelRef.current.untrack().then(() => {
+              if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+              }
+            });
+          }
+          setState(prev => ({ ...prev, ...DEFAULT_ROOM_STATE }));
+          setTimeout(() => {
+            toast.error('YOU HAVE BEEN REMOVED', {
+              description: 'An admin removed you from the void.',
+              duration: 5000,
+            });
+          }, 100);
+        } else {
+          setState(prev => ({
+            ...prev,
+            messages: [...prev.messages, {
+              id: generateId(),
+              username: 'system',
+              text: `${parsed.username} was removed.`,
+              timestamp: Date.now(),
+              type: 'system',
+            }],
+          }));
+        }
+      });
+
+      channel.on('broadcast', { event: 'reaction' }, (payload) => {
+        const parsed = safeParse(ReactionSchema, payload.payload);
+        if (!parsed) return;
+        setState(prev => ({
+          ...prev,
+          messages: prev.messages.map(m =>
+            m.id !== parsed.messageId ? m : { ...m, reactions: toggleReaction(m.reactions, parsed.emoji, parsed.username) }
+          ),
+        }));
+      });
+
+      // History sync: respond to requests from rejoining users
+      channel.on('broadcast', { event: 'request-history' }, () => {
+        // Only the alphabetically first user responds to avoid duplicates
+        const presenceState = channel.presenceState();
+        const activeUsers = Object.keys(presenceState).sort();
+        if (activeUsers[0] !== username) return;
+
+        const now = Date.now();
+        setState(prev => {
+          const validMessages = prev.messages.filter(m => now - m.timestamp < TEN_MINUTES);
+          if (validMessages.length > 0) {
+            channel.send({
+              type: 'broadcast',
+              event: 'history-sync',
+              payload: { messages: validMessages },
+            });
+          }
+          return prev;
+        });
+      });
+
+      // History sync: receive history when rejoining
+      channel.on('broadcast', { event: 'history-sync' }, (payload) => {
+        const parsed = payload.payload as { messages?: unknown[] };
+        if (!parsed?.messages || !Array.isArray(parsed.messages)) return;
+        const now = Date.now();
+        const validMessages: ChatMessage[] = [];
+        for (const raw of parsed.messages) {
+          const msg = safeParse(ChatMessageSchema, raw);
+          if (msg && now - msg.timestamp < TEN_MINUTES) {
+            validMessages.push(msg as ChatMessage);
+          }
+        }
+        if (validMessages.length === 0) return;
+        setState(prev => {
+          const existingIds = new Set(prev.messages.map(m => m.id));
+          const newMessages = validMessages.filter(m => !existingIds.has(m.id));
+          if (newMessages.length === 0) return prev;
+          const merged = [...newMessages, ...prev.messages].sort((a, b) => a.timestamp - b.timestamp);
+          return { ...prev, messages: merged };
+        });
+      });
+
+      let hasHadUsers = false;
+
+      channel.on('presence', { event: 'sync' }, () => {
+        const presenceState = channel.presenceState();
+        const users: RoomUser[] = Object.keys(presenceState).map(key => ({
+          username: key,
+          joinedAt: (presenceState[key]?.[0] as any)?.joinedAt ?? Date.now(),
+        }));
+        setState(prev => ({ ...prev, users }));
+
+        if (users.length > 0) {
+          hasHadUsers = true;
+        }
+
+        if (users.length === 0 && hasHadUsers) {
+          setState(prev => ({ ...prev, messages: [] }));
+          // Clean up room password and stored images when room empties
+          const currentRoom = roomCode;
+          supabase.functions.invoke('room-password', {
+            body: { action: 'delete', roomCode: currentRoom },
+          }).catch(() => {});
+          // Purge room images from storage
+          supabase.storage.from('chat-images').list(currentRoom).then(({ data: files }) => {
+            if (files && files.length > 0) {
+              const paths = files.map(f => `${currentRoom}/${f.name}`);
+              supabase.storage.from('chat-images').remove(paths).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+
+        // Post-join duplicate check: wait for presence to settle, then check
+        if (!duplicateChecked && !skipDuplicateCheck) {
+          const entries = presenceState[username];
+          if (entries && entries.length > 1) {
+            duplicateChecked = true;
+            // Broadcast impersonation warning to the room before leaving
+            channel.send({
+              type: 'broadcast',
+              event: 'system',
+              payload: {
+                id: generateId(),
+                username: 'system',
+                text: `⚠ Someone tried joining as "${username}"`,
+                timestamp: Date.now(),
+                type: 'system',
+              },
+            });
+            // Leave the channel
+            channel.untrack().then(() => supabase.removeChannel(channel)).catch(() => supabase.removeChannel(channel));
+            channelRef.current = null;
+            setState(prev => ({ ...prev, ...DEFAULT_ROOM_STATE }));
+            setTimeout(() => {
+              toast.error('IDENTITY CONFLICT', {
+                description: `"${username}" is already active in this void. Choose another identity.`,
+                duration: 5000,
+              });
+            }, 100);
+            resolveJoin({ error: 'Username already active in this void. Please choose another identity.' });
+            return;
+          }
+        }
+      });
+
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ username, joinedAt: Date.now() });
+          // Don't broadcast join message yet — wait for duplicate check
+          // Resolve after a delay to allow presence sync with duplicate info
+          if (skipDuplicateCheck) {
+            channel.send({ type: 'broadcast', event: 'system', payload: systemMsg });
+            // Request history from existing users after a short delay
+            setTimeout(() => {
+              channel.send({ type: 'broadcast', event: 'request-history', payload: {} });
+            }, 500);
+            resolveJoin({ error: null });
+          } else {
+            setTimeout(() => {
+              if (!duplicateChecked) {
+                duplicateChecked = true;
+                // Only broadcast join after confirming no duplicate
+                channel.send({ type: 'broadcast', event: 'system', payload: systemMsg });
+                // Request history from existing users
+                setTimeout(() => {
+                  channel.send({ type: 'broadcast', event: 'request-history', payload: {} });
+                }, 500);
+                resolveJoin({ error: null });
+              }
+            }, 1500);
+          }
+        }
+      });
+
+      channelRef.current = channel;
     });
-
-    channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await channel.track({ username, joinedAt: Date.now() });
-        channel.send({ type: 'broadcast', event: 'system', payload: systemMsg });
-      }
-    });
-
-    channelRef.current = channel;
   }, []);
 
   const leaveRoom = useCallback(() => {
@@ -323,21 +565,12 @@ export function useChat() {
       channelRef.current = null;
     }
 
-    setState(prev => ({
-      ...prev,
-      isJoined: false,
-      messages: [],
-      users: [],
-      username: '',
-      roomCode: '',
-      typingUsers: [],
-      frozen: false,
-      frozenBy: null,
-    }));
+    setState(prev => ({ ...prev, ...DEFAULT_ROOM_STATE }));
   }, []);
 
-  const sendMessage = useCallback((text: string) => {
+  const sendMessage = useCallback((text: string, replyTo?: ReplyTo) => {
     if (!text.trim()) return;
+    if (!checkRateLimit()) return;
 
     const msg: ChatMessage = {
       id: generateId(),
@@ -346,6 +579,7 @@ export function useChat() {
       timestamp: Date.now(),
       type: 'message',
       status: 'sent',
+      ...(replyTo ? { replyTo } : {}),
     };
 
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
@@ -353,7 +587,7 @@ export function useChat() {
     if (channelRef.current) {
       channelRef.current.send({ type: 'broadcast', event: 'message', payload: msg });
     }
-  }, []);
+  }, [checkRateLimit]);
 
   const sendTyping = useCallback(() => {
     if (channelRef.current) {
@@ -364,6 +598,8 @@ export function useChat() {
   }, []);
 
   const sendGif = useCallback((gifUrl: string) => {
+    if (!checkRateLimit()) return;
+
     const msg: ChatMessage = {
       id: generateId(),
       username: usernameRef.current,
@@ -373,6 +609,7 @@ export function useChat() {
       status: 'sent',
       imageUrl: gifUrl,
       imageExpiry: Date.now() + TEN_MINUTES,
+      isGif: true,
     };
 
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
@@ -380,22 +617,18 @@ export function useChat() {
     if (channelRef.current) {
       channelRef.current.send({ type: 'broadcast', event: 'message', payload: msg });
     }
-  }, []);
+  }, [checkRateLimit]);
 
   const toggleNotifications = useCallback(async () => {
-    if (!state.notificationsEnabled) {
-      if ('Notification' in window) {
-        const perm = await Notification.requestPermission();
-        if (perm === 'granted') {
-          localStorage.setItem('chat_notif_pref', 'true');
-          setState(prev => ({ ...prev, notificationsEnabled: true }));
-        }
+    setState(prev => {
+      const next = !prev.notificationsEnabled;
+      localStorage.setItem('chat_notif_pref', String(next));
+      if (next && 'Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
       }
-    } else {
-      localStorage.setItem('chat_notif_pref', 'false');
-      setState(prev => ({ ...prev, notificationsEnabled: false }));
-    }
-  }, [state.notificationsEnabled]);
+      return { ...prev, notificationsEnabled: next };
+    });
+  }, []);
 
   const nukeRoom = useCallback(() => {
     if (channelRef.current) {
@@ -458,11 +691,11 @@ export function useChat() {
   }, []);
 
   const sendImage = useCallback(async (file: File, onProgress?: (p: number) => void) => {
+    if (!checkRateLimit()) return;
+
     const ext = file.name.split('.').pop() || 'png';
     const storedFileName = `${generateId()}_${Date.now()}.${ext}`;
     const expiry = Date.now() + TEN_MINUTES;
-    
-    // Determine if this is an image or a file
     const isImage = file.type.startsWith('image/');
 
     onProgress?.(10);
@@ -473,6 +706,7 @@ export function useChat() {
 
     if (error) {
       console.error('Upload failed:', error.message);
+      toast.error('Upload failed — file may be too large or unsupported.');
       return;
     }
 
@@ -491,7 +725,6 @@ export function useChat() {
       timestamp: Date.now(),
       type: 'message',
       status: 'sent',
-      // For images, use imageUrl; for files, use fileUrl with metadata
       ...(isImage
         ? {
             imageUrl: urlData.publicUrl,
@@ -505,15 +738,6 @@ export function useChat() {
           }),
     };
 
-    console.log('[v0] Sending file message:', { 
-      isImage, 
-      fileType: file.type, 
-      fileName: file.name,
-      msgFileUrl: msg.fileUrl,
-      msgFileName: msg.fileName,
-      msgFileMimeType: msg.fileMimeType
-    });
-
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
 
     if (channelRef.current) {
@@ -521,13 +745,12 @@ export function useChat() {
     }
 
     onProgress?.(100);
-  }, []);
+  }, [checkRateLimit]);
 
   const broadcastScreenshot = useCallback(() => {
     if (channelRef.current) {
       channelRef.current.send({ type: 'broadcast', event: 'screenshot', payload: { username: usernameRef.current } });
     }
-    // Also show locally
     setState(prev => ({
       ...prev,
       messages: [...prev.messages, {
@@ -540,9 +763,39 @@ export function useChat() {
     }));
   }, []);
 
+  const kickUser = useCallback((username: string) => {
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'kick', payload: { username } });
+    }
+    // Also add local system message
+    setState(prev => ({
+      ...prev,
+      messages: [...prev.messages, {
+        id: generateId(),
+        username: 'system',
+        text: `${username} was removed.`,
+        timestamp: Date.now(),
+        type: 'system',
+      }],
+    }));
+  }, []);
+
+  const reactToMessage = useCallback((messageId: string, emoji: string) => {
+    const username = usernameRef.current;
+    setState(prev => ({
+      ...prev,
+      messages: prev.messages.map(m =>
+        m.id !== messageId ? m : { ...m, reactions: toggleReaction(m.reactions, emoji, username) }
+      ),
+    }));
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: 'reaction', payload: { messageId, emoji, username } });
+    }
+  }, []);
+
   return {
     state, joinRoom, leaveRoom, sendMessage, sendTyping, sendGif,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
-    checkUsernameAvailable, broadcastScreenshot,
+    broadcastScreenshot, kickUser, reactToMessage,
   };
 }
