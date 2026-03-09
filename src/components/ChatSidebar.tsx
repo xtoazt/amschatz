@@ -26,7 +26,7 @@ export function ChatSidebar({ roomCode, users, currentUser, onLeave, className }
   const [isRoomNameHovered, setIsRoomNameHovered] = useState(false);
   
   return (
-    <div className={`w-56 h-full bg-card flex flex-col shrink-0 ${className ?? 'hidden md:flex'}`}>
+    <div className={`w-56 h-full bg-card flex flex-col shrink-0 border-r border-border/30 ${className ?? 'hidden md:flex'}`}>
       <div className="p-4">
         <span className="text-xs font-medium text-muted-foreground">Room</span>
         <p 
