@@ -35,7 +35,6 @@ interface ChatAreaProps {
   onUnsend: (messageId: string) => void;
   onSendImage: (file: File, onProgress?: (p: number) => void) => void;
   onSendGif: (url: string) => void;
-  onReact: (messageId: string, emoji: string) => void;
 }
 
 export function ChatArea({
