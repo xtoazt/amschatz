@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Eye, Lock, Megaphone, Users, UserX, Clover } from 'lucide-react';
+import { X, Trash2, Eye, Lock, Megaphone, Users, UserX } from 'lucide-react';
 import { ChatMessage, RoomUser } from '@/types/chat';
 
 interface AdminPanelProps {
@@ -8,12 +8,10 @@ interface AdminPanelProps {
   users: RoomUser[];
   userCount: number;
   frozen: boolean;
-  gingerMode: boolean;
   onNuke: () => void;
   onFreeze: () => void;
   onAnnounce: (text: string) => void;
   onKick: (username: string) => void;
-  onToggleGinger: () => void;
   onClose: () => void;
 }
 
@@ -22,12 +20,10 @@ export function AdminPanel({
   users,
   userCount,
   frozen,
-  gingerMode,
   onNuke,
   onFreeze,
   onAnnounce,
   onKick,
-  onToggleGinger,
   onClose,
 }: AdminPanelProps) {
   const [view, setView] = useState<'main' | 'logs' | 'kick'>('main');
@@ -181,15 +177,6 @@ export function AdminPanel({
             >
               <UserX className="w-4 h-4" />
               Kick User
-            </motion.button>
-
-            <motion.button
-              onClick={onToggleGinger}
-              whileTap={{ scale: 0.95 }}
-              className="w-full flex items-center gap-2 border border-foreground/30 text-foreground text-sm font-mono py-2.5 px-3 rounded-xl hover:border-foreground transition-colors"
-            >
-              <Clover className="w-4 h-4" />
-              {gingerMode ? 'Disable Ginger Mode' : 'Enable Ginger Mode'}
             </motion.button>
 
             {/* Announcement */}

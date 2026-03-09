@@ -6,13 +6,12 @@ import { ChatSidebar } from '@/components/ChatSidebar';
 import { ChatArea } from '@/components/ChatArea';
 import { AdminPanel } from '@/components/AdminPanel';
 import { AdminAuthOverlay } from '@/components/AdminAuthOverlay';
-import { CloverRain } from '@/components/CloverRain';
 
 const Index = () => {
   const {
     state, joinRoom, leaveRoom, sendMessage, sendTyping,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage, sendGif,
-    broadcastScreenshot, kickUser, reactToMessage, toggleGingerMode,
+    broadcastScreenshot, kickUser, reactToMessage,
   } = useChat();
   const [adminOpen, setAdminOpen] = useState(false);
   const [authOverlay, setAuthOverlay] = useState(false);
@@ -34,15 +33,6 @@ const Index = () => {
   }, [uiScale]);
 
   useScreenshotDetect(broadcastScreenshot, state.isJoined);
-
-  useEffect(() => {
-    if (state.gingerMode) {
-      document.documentElement.classList.add('ginger-theme');
-    } else {
-      document.documentElement.classList.remove('ginger-theme');
-    }
-    return () => document.documentElement.classList.remove('ginger-theme');
-  }, [state.gingerMode]);
 
   const handleSend = (text: string, replyTo?: { id: string; username: string; text: string }) => {
     if (text.trim() === '/admin') {
@@ -120,16 +110,13 @@ const Index = () => {
           users={state.users}
           userCount={state.users.length}
           frozen={state.frozen}
-          gingerMode={state.gingerMode}
           onNuke={handleNuke}
           onFreeze={freezeChat}
           onAnnounce={sendAnnouncement}
           onKick={kickUser}
-          onToggleGinger={toggleGingerMode}
           onClose={() => setAdminOpen(false)}
         />
       )}
-      {state.gingerMode && <CloverRain />}
     </div>
   );
 };

@@ -43,5 +43,4 @@ export interface ChatState {
   frozen: boolean;
   frozenBy: string | null;
   isPasswordProtected: boolean;
-  gingerMode: boolean;
 }
