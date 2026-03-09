@@ -254,7 +254,7 @@ export function ChatArea({
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors">
+              <button className="p-2 rounded-md text-foreground transition-colors">
                 <ZoomIn className="w-4 h-4" />
               </button>
             </PopoverTrigger>
