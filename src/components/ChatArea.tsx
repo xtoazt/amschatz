@@ -246,7 +246,11 @@ export function ChatArea({
             <span className="text-[10px] font-mono">locked</span>
           </div>
         )}
-        <div className="flex-1" />
+        <div className="flex-1 flex justify-center">
+          <span className="text-[10px] font-mono text-muted-foreground/50 tracking-wider select-none">
+            {'•'.repeat(Math.min(roomCode.length, 12))}
+          </span>
+        </div>
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
