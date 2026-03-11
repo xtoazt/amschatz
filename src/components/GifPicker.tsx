@@ -36,7 +36,7 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
     setError(false);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('gif-search', {
-        body: { q: q.trim(), limit: 24 },
+        body: { q: q.trim(), limit: 24 }
       });
 
       if (fnError || !data?.results) {
@@ -74,78 +74,78 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
           type="button"
           disabled={disabled}
           className="p-2.5 text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] disabled:opacity-20 disabled:cursor-not-allowed"
-          title="Send GIF"
-        >
+          title="Send GIF">
+          
           <span className="text-xs font-bold tracking-tight">GIF</span>
         </button>
       </PopoverTrigger>
       <PopoverContent
         side="top"
         align="start"
-        className="w-80 p-0 bg-background border border-foreground"
-      >
+        className="w-80 p-0 bg-background border border-foreground">
+        
         {/* Search input */}
         <div className="flex items-center gap-2 p-2 border-b border-foreground">
           <Search className="w-3.5 h-3.5 text-foreground shrink-0" />
           <input
             value={query}
-            onChange={e => handleQueryChange(e.target.value)}
-            placeholder="Search GIFs via KLIPY"
+            onChange={(e) => handleQueryChange(e.target.value)}
+
             autoFocus
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-foreground/50 outline-none"
-            maxLength={100}
-          />
-          {query && (
-            <button onClick={() => { setQuery(''); setResults([]); setError(false); }}>
+            maxLength={100} placeholder="Search KLIPY" />
+          
+          {query &&
+          <button onClick={() => {setQuery('');setResults([]);setError(false);}}>
               <X className="w-3.5 h-3.5 text-foreground" />
             </button>
-          )}
+          }
         </div>
 
         {/* Results grid */}
         <div className="max-h-64 overflow-y-auto scrollbar-thin p-1.5 bg-background">
-          {loading && (
-            <div className="flex justify-center py-8">
+          {loading &&
+          <div className="flex justify-center py-8">
               <span className="text-xs text-muted-foreground animate-pulse">Searching the void...</span>
             </div>
-          )}
+          }
 
-          {!loading && error && (
-            <div className="flex justify-center py-8">
+          {!loading && error &&
+          <div className="flex justify-center py-8">
               <span className="text-xs text-muted-foreground">Search failed. Try again.</span>
             </div>
-          )}
+          }
 
-          {!loading && !error && results.length === 0 && query && (
-            <div className="flex justify-center py-8">
+          {!loading && !error && results.length === 0 && query &&
+          <div className="flex justify-center py-8">
               <span className="text-xs text-muted-foreground">No results</span>
             </div>
-          )}
+          }
 
-          {!loading && !error && results.length === 0 && !query && (
-            <div className="flex justify-center py-8">
+          {!loading && !error && results.length === 0 && !query &&
+          <div className="flex justify-center py-8">
               <span className="text-xs text-muted-foreground">Type to search GIFs</span>
             </div>
-          )}
+          }
 
-          {results.length > 0 && (
-            <div className="grid grid-cols-2 gap-1">
-              {results.map(gif => (
-                <button
-                  key={gif.id}
-                  onClick={() => handleSelect(gif.url)}
-                  className="relative overflow-hidden border border-foreground hover:border-primary transition-all duration-200"
-                >
+          {results.length > 0 &&
+          <div className="grid grid-cols-2 gap-1">
+              {results.map((gif) =>
+            <button
+              key={gif.id}
+              onClick={() => handleSelect(gif.url)}
+              className="relative overflow-hidden border border-foreground hover:border-primary transition-all duration-200">
+              
                   <img
-                    src={gif.preview_url}
-                    alt=""
-                    loading="lazy"
-                    className="w-full h-24 object-cover grayscale hover:grayscale-0 transition-all duration-200 ease-in-out"
-                  />
+                src={gif.preview_url}
+                alt=""
+                loading="lazy"
+                className="w-full h-24 object-cover grayscale hover:grayscale-0 transition-all duration-200 ease-in-out" />
+              
                 </button>
-              ))}
+            )}
             </div>
-          )}
+          }
         </div>
 
         {/* Attribution */}
@@ -153,6 +153,6 @@ export function GifPicker({ onSelect, disabled }: GifPickerProps) {
           <img src={poweredByKlipy} alt="Powered by KLIPY" className="h-4 object-contain" />
         </div>
       </PopoverContent>
-    </Popover>
-  );
+    </Popover>);
+
 }
