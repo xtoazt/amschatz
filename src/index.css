@@ -121,62 +121,72 @@
   background-size: 256px 256px;
 }
 
-/* TV static glitch effect */
-.glitch-text {
-  animation: glitch-static 0.3s steps(2, end);
+/* ── Void Logo ─────────────────────────────────────────── */
+.void-logo-text {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.08), 0 0 40px rgba(255, 255, 255, 0.03);
   position: relative;
 }
 
-.glitch-text::before,
-.glitch-text::after {
+/* Active glitch state — triggered periodically */
+.void-glitch-active {
+  animation: void-glitch-jitter 0.35s steps(2, end);
+}
+
+.void-glitch-active::before,
+.void-glitch-active::after {
   content: 'v0id';
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  display: flex;
 }
 
-.glitch-text::before {
-  animation: glitch-clip-1 0.3s steps(3, end);
-  clip-path: inset(20% 0 40% 0);
+.void-glitch-active::before {
+  animation: void-glitch-slice-1 0.35s steps(4, end);
+  clip-path: inset(15% 0 45% 0);
+  text-shadow: -3px 0 rgba(255, 255, 255, 0.7), 3px 0 rgba(255, 255, 255, 0.3);
   color: hsl(var(--foreground));
-  text-shadow: -2px 0 hsl(var(--foreground) / 0.7);
 }
 
-.glitch-text::after {
-  animation: glitch-clip-2 0.3s steps(3, end);
-  clip-path: inset(60% 0 10% 0);
+.void-glitch-active::after {
+  animation: void-glitch-slice-2 0.35s steps(4, end);
+  clip-path: inset(55% 0 5% 0);
+  text-shadow: 3px 0 rgba(255, 255, 255, 0.7), -2px 0 rgba(255, 255, 255, 0.3);
   color: hsl(var(--foreground));
-  text-shadow: 2px 0 hsl(var(--foreground) / 0.7);
 }
 
-@keyframes glitch-static {
-  0% { transform: translate(0); opacity: 1; }
-  10% { transform: translate(-2px, 1px); opacity: 0.85; }
-  20% { transform: translate(2px, -1px); opacity: 1; }
-  30% { transform: translate(0, 2px); opacity: 0.9; }
-  40% { transform: translate(-1px, -2px); opacity: 0.7; }
-  50% { transform: translate(3px, 0); opacity: 1; }
-  60% { transform: translate(-3px, 1px); opacity: 0.8; }
-  70% { transform: translate(0); opacity: 0.95; }
-  80% { transform: translate(1px, -1px); opacity: 0.85; }
-  90% { transform: translate(-1px, 2px); opacity: 1; }
+@keyframes void-glitch-jitter {
+  0%   { transform: translate(0); opacity: 1; }
+  8%   { transform: translate(-3px, 2px); opacity: 0.8; }
+  16%  { transform: translate(3px, -1px); opacity: 1; }
+  24%  { transform: translate(-1px, 3px); opacity: 0.85; }
+  32%  { transform: translate(2px, -3px); opacity: 0.6; }
+  40%  { transform: translate(-4px, 0); opacity: 1; }
+  48%  { transform: translate(4px, 2px); opacity: 0.75; }
+  56%  { transform: translate(0, -2px); opacity: 0.9; }
+  64%  { transform: translate(-2px, 1px); opacity: 1; }
+  72%  { transform: translate(1px, -1px); opacity: 0.7; }
+  80%  { transform: translate(-1px, 3px); opacity: 0.95; }
+  88%  { transform: translate(3px, 0); opacity: 0.85; }
   100% { transform: translate(0); opacity: 1; }
 }
 
-@keyframes glitch-clip-1 {
-  0% { clip-path: inset(20% 0 40% 0); transform: translate(-3px, 0); }
-  33% { clip-path: inset(50% 0 10% 0); transform: translate(2px, 0); }
-  66% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 0); }
-  100% { clip-path: inset(20% 0 40% 0); transform: translate(0); }
+@keyframes void-glitch-slice-1 {
+  0%   { clip-path: inset(15% 0 45% 0); transform: translate(-4px, 0); }
+  25%  { clip-path: inset(40% 0 20% 0); transform: translate(3px, 0); }
+  50%  { clip-path: inset(5% 0 65% 0); transform: translate(-2px, 0); }
+  75%  { clip-path: inset(55% 0 10% 0); transform: translate(4px, 0); }
+  100% { clip-path: inset(15% 0 45% 0); transform: translate(0); }
 }
 
-@keyframes glitch-clip-2 {
-  0% { clip-path: inset(60% 0 10% 0); transform: translate(3px, 0); }
-  33% { clip-path: inset(10% 0 50% 0); transform: translate(-2px, 0); }
-  66% { clip-path: inset(40% 0 20% 0); transform: translate(1px, 0); }
-  100% { clip-path: inset(60% 0 10% 0); transform: translate(0); }
+@keyframes void-glitch-slice-2 {
+  0%   { clip-path: inset(55% 0 5% 0); transform: translate(4px, 0); }
+  25%  { clip-path: inset(10% 0 55% 0); transform: translate(-3px, 0); }
+  50%  { clip-path: inset(35% 0 25% 0); transform: translate(2px, 0); }
+  75%  { clip-path: inset(70% 0 0% 0); transform: translate(-4px, 0); }
+  100% { clip-path: inset(55% 0 5% 0); transform: translate(0); }
 }
 
 /* Join button breathing glow — enhanced */
@@ -230,4 +240,29 @@
 .hover-lift:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px hsl(var(--foreground) / 0.05);
+}
+
+/* ── Starfield Background ─────────────────────────────── */
+@keyframes starfield-drift {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-2000px); }
+}
+
+@keyframes starfield-pulse {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.6; }
+}
+
+/* ── Input Focus Glow Removed ───────────────────────────── */
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* ── Tactile Press ────────────────────────────────────── */
+.tactile-press {
+  transition: transform 0.1s ease;
+}
+.tactile-press:active {
+  transform: scale(0.95);
 }

@@ -139,9 +139,11 @@ export const MessageBubble = memo(function MessageBubble({
         initial="hidden"
         animate="visible"
         custom={index}
-        className="flex justify-center py-1"
+        className="flex justify-center py-1.5"
       >
-        <span className="text-[11px] text-muted-foreground font-mono">{msg.text}</span>
+        <span className="text-[10px] text-muted-foreground/70 font-mono bg-white/5 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm select-none">
+          {msg.text}
+        </span>
       </motion.div>
     );
   }
@@ -214,10 +216,10 @@ export const MessageBubble = memo(function MessageBubble({
         </div>
       ) : (
         <div
-          className={`px-3.5 py-2 text-[13px] leading-relaxed transition-all duration-150 hover:brightness-110 w-fit max-w-full select-none ${radiusClass} ${
+          className={`px-4 py-2.5 text-[14px] leading-relaxed transition-all duration-150 hover:brightness-110 w-fit max-w-full select-none ${radiusClass} ${
             isOwn
-              ? 'bg-message-own text-message-own-foreground shadow-[0_1px_4px_rgba(255,255,255,0.08)]'
-              : 'bg-message-other text-message-other-foreground shadow-[0_1px_3px_rgba(0,0,0,0.2)]'
+              ? 'bg-white/10 text-foreground border border-white/5 shadow-[0_4px_12px_rgba(0,0,0,0.1)]'
+              : 'bg-black/40 text-foreground border border-white/[0.04] shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
           }`}
         >
           {msg.imageUrl && (
@@ -290,13 +292,13 @@ export const MessageBubble = memo(function MessageBubble({
         <ContextMenuTrigger asChild>
           <div className={`group flex items-center gap-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
             {isOwn && !groupInfo.isLastInGroup && (
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[10px] font-mono text-muted-foreground whitespace-nowrap select-none">
+              <span className="opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:-translate-y-0.5 text-[10px] font-mono text-muted-foreground whitespace-nowrap select-none">
                 {formatTime(msg.timestamp)}
               </span>
             )}
             {bubble}
             {!isOwn && !groupInfo.isLastInGroup && (
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[10px] font-mono text-muted-foreground whitespace-nowrap select-none">
+              <span className="opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:-translate-y-0.5 text-[10px] font-mono text-muted-foreground whitespace-nowrap select-none">
                 {formatTime(msg.timestamp)}
               </span>
             )}

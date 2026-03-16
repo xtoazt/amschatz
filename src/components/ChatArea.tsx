@@ -233,10 +233,10 @@ export function ChatArea({
       )}
 
       {/* Header */}
-      <header className="h-12 flex items-center px-4 shrink-0 bg-card/60 backdrop-blur-xl border-b border-border/30 shadow-[0_1px_6px_rgba(0,0,0,0.4)] sticky top-0 z-20">
+      <header className="h-14 flex items-center px-4 shrink-0 bg-card/60 backdrop-blur-xl border-b border-border/30 shadow-[0_1px_6px_rgba(0,0,0,0.4)] sticky top-0 z-20 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/10 after:to-transparent">
         <button
           onClick={() => setMobileSidebarOpen(true)}
-          className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors md:hidden"
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors md:hidden"
         >
           <Users className="w-4 h-4" />
         </button>
@@ -247,14 +247,12 @@ export function ChatArea({
           </div>
         )}
         <div className="flex-1 flex justify-center">
-          <span className="text-[10px] font-mono text-muted-foreground/50 tracking-wider select-none">
-            {'•'.repeat(Math.min(roomCode.length, 12))}
-          </span>
+          {/* Room code display removed per user request */}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <Popover>
             <PopoverTrigger asChild>
-              <button className="p-2 rounded-md text-foreground transition-colors">
+              <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-foreground transition-colors">
                 <ZoomIn className="w-4 h-4" />
               </button>
             </PopoverTrigger>
@@ -280,11 +278,11 @@ export function ChatArea({
               rotate: [0, -15, 15, -12, 12, -6, 6, -2, 2, 0],
             } : { rotate: 0 }}
             transition={{ duration: 0.6, ease: 'easeInOut' }}
-            className={`p-2 rounded-md transition-colors ${notificationsEnabled ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors ${notificationsEnabled ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {notificationsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
           </motion.button>
-          <button onClick={onLeave} className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] md:hidden">
+          <button onClick={onLeave} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] md:hidden">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -485,12 +483,12 @@ export function ChatArea({
             />
           </div>
         )}
-        <div className="flex gap-1 items-center border border-border/30 focus-within:border-border/60 rounded-xl bg-card/40 backdrop-blur-sm px-1 transition-all duration-200">
+        <div className="flex gap-1 items-center border border-white/10 focus-within:border-white/20 rounded-xl bg-black/60 backdrop-blur-md px-1.5 transition-colors duration-300">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isInputDisabled}
-            className="p-2.5 text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] disabled:opacity-20 disabled:cursor-not-allowed"
+            className="p-2.5 text-muted-foreground hover:text-foreground hover:-rotate-12 transition-all active:scale-[0.95] disabled:opacity-20 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -505,17 +503,19 @@ export function ChatArea({
             maxLength={2000}
           />
           {input.length > 1800 && (
-            <span className="text-[10px] font-mono text-muted-foreground/60 pr-1">
+            <span className={`text-[10px] font-mono pr-2 transition-colors ${input.length > 1950 ? 'text-destructive' : 'text-muted-foreground/60'}`}>
               {input.length}/2000
             </span>
           )}
           <motion.button
             type="submit"
             disabled={!input.trim() || isInputDisabled}
-            className="bg-primary text-primary-foreground p-2 rounded-lg hover:opacity-90 transition-all disabled:opacity-10 disabled:cursor-not-allowed"
+            className={`p-2.5 rounded-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center text-foreground ${
+              input.trim() ? 'bg-white/15 hover:bg-white/25' : 'bg-transparent'
+            }`}
             whileTap={{ scale: 0.9, rotate: -12 }}
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-4 h-4 ml-0.5" />
           </motion.button>
         </div>
       </form>

@@ -44,7 +44,6 @@ const BulkReadSchema = z.object({ messageIds: z.array(z.string().max(50)), reade
 const FreezeSchema = z.object({ frozen: z.boolean(), by: z.string().max(20) });
 const EditSchema = z.object({ messageId: z.string().max(50), newText: z.string().max(5000) });
 const UnsendSchema = z.object({ messageId: z.string().max(50) });
-const ScreenshotSchema = z.object({ username: z.string().max(20) });
 const KickSchema = z.object({ username: z.string().max(20) });
 
 function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
@@ -332,19 +331,6 @@ export function useChat() {
           ...prev,
           messages: prev.messages.map(m => m.id === parsed.messageId ? { ...m, text: '', deleted: true } : m),
         }));
-      });
-
-      channel.on('broadcast', { event: 'screenshot' }, (payload) => {
-        const parsed = safeParse(ScreenshotSchema, payload.payload);
-        if (!parsed || parsed.username === usernameRef.current) return;
-        const alertMsg: ChatMessage = {
-          id: generateId(),
-          username: 'system',
-          text: `⚠ ${parsed.username} took a screenshot`,
-          timestamp: Date.now(),
-          type: 'system',
-        };
-        setState(prev => ({ ...prev, messages: [...prev.messages, alertMsg] }));
       });
 
       channel.on('broadcast', { event: 'kick' }, (payload) => {
@@ -716,22 +702,6 @@ export function useChat() {
     onProgress?.(100);
   }, [checkRateLimit]);
 
-  const broadcastScreenshot = useCallback(() => {
-    if (channelRef.current) {
-      channelRef.current.send({ type: 'broadcast', event: 'screenshot', payload: { username: usernameRef.current } });
-    }
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, {
-        id: generateId(),
-        username: 'system',
-        text: '⚠ You took a screenshot — others have been notified',
-        timestamp: Date.now(),
-        type: 'system',
-      }],
-    }));
-  }, []);
-
   const kickUser = useCallback((username: string) => {
     if (channelRef.current) {
       channelRef.current.send({ type: 'broadcast', event: 'kick', payload: { username } });
@@ -752,6 +722,6 @@ export function useChat() {
   return {
     state, joinRoom, leaveRoom, sendMessage, sendTyping, sendGif,
     toggleNotifications, nukeRoom, freezeChat, sendAnnouncement, editMessage, unsendMessage, sendImage,
-    broadcastScreenshot, kickUser,
+    kickUser,
   };
 }

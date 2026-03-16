@@ -18,14 +18,10 @@ export const FileAttachment = memo(function FileAttachment({ fileName, fileSize,
       onClick={onInspect}
       whileHover={{ y: -1, boxShadow: '0 0 10px rgba(255,255,255,0.15)' }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className={`flex items-center gap-2 p-2 border transition-colors active:scale-[0.95] mb-1 w-full ${
-        isOwn
-          ? 'border-message-own-foreground/30 hover:bg-message-own-foreground/10'
-          : 'border-message-other-foreground/30 hover:bg-message-other-foreground/10'
-      }`}
+      className={`flex items-center gap-2 p-3 border rounded-lg transition-colors active:scale-[0.95] mb-1.5 w-full border-white/10 hover:bg-white/5`}
     >
-      <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isOwn ? 'text-message-own-foreground' : 'text-message-other-foreground'}`} />
-      <span className={`text-xs font-mono truncate flex-1 text-left ${isOwn ? 'text-message-own-foreground' : 'text-message-other-foreground'}`}>
+      <IconComponent className={`w-4 h-4 shrink-0 text-foreground`} />
+      <span className={`text-sm font-mono truncate flex-1 text-left text-foreground`}>
         {fileName}
       </span>
     </motion.button>

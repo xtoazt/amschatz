@@ -14,10 +14,14 @@ interface ChatSidebarProps {
 function UserAvatar({ username, isYou }: { username: string; isYou: boolean }) {
   const initial = username.charAt(0).toUpperCase();
   return (
-    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-mono font-medium shrink-0 ${
-      isYou ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'
-    }`}>
-      {initial}
+    <div className="relative">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-mono font-medium shrink-0 ${
+        isYou ? 'bg-foreground text-background ring-2 ring-white/10' : 'bg-muted text-muted-foreground ring-1 ring-border/50'
+      }`}>
+        {initial}
+      </div>
+      {/* Online indicator dot */}
+      <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border-2 border-background ${isYou ? 'bg-green-500' : 'bg-white/40'}`} />
     </div>
   );
 }
@@ -47,7 +51,8 @@ export function ChatSidebar({ roomCode, users, currentUser, onLeave, className }
         </div>
       </div>
 
-      <div className="mx-4 h-px bg-border/30" />
+      {/* Gradient divider */}
+      <div className="mx-4 h-[1px] bg-gradient-to-r from-transparent via-border/50 to-transparent" />
 
       <div className="flex-1 p-4 overflow-y-auto scrollbar-thin">
         <div className="flex items-center gap-1.5 mb-3">
@@ -82,10 +87,11 @@ export function ChatSidebar({ roomCode, users, currentUser, onLeave, className }
       <div className="p-4">
         <button
           onClick={onLeave}
-          className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-all active:scale-[0.95] py-2 rounded-md hover:bg-muted"
+          className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.95] py-2 rounded-lg hover:bg-destructive/80 hover:shadow-[0_0_15px_rgba(255,0,0,0.3)] group relative overflow-hidden"
         >
-          <LogOut className="w-3.5 h-3.5" />
-          <span className="text-xs font-mono">Leave</span>
+          <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12" />
+          <LogOut className="w-3.5 h-3.5 relative z-10 transition-transform group-hover:-translate-x-0.5" />
+          <span className="text-xs font-mono relative z-10">Leave</span>
         </button>
       </div>
     </div>
