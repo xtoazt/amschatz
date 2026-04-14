@@ -6,6 +6,7 @@
 
 @layer base {
   :root {
+    /* Pure black and white palette */
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
 
@@ -22,33 +23,33 @@
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 55%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 0% 35%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 12%;
+    --border: 0 0% 20%;
+    --input: 0 0% 8%;
     --ring: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
 
-    --message-own: 0 0% 100%;
-    --message-own-foreground: 0 0% 0%;
-    --message-other: 0 0% 14%;
-    --message-other-foreground: 0 0% 100%;
-    --online-dot: 0 0% 55%;
+    --message-own: 0 0% 18%;
+    --message-own-foreground: 0 0% 100%;
+    --message-other: 0 0% 10%;
+    --message-other-foreground: 0 0% 90%;
+    --online-dot: 0 0% 100%;
 
-    --sidebar-background: 0 0% 5%;
+    --sidebar-background: 0 0% 3%;
     --sidebar-foreground: 0 0% 70%;
     --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 18%;
+    --sidebar-border: 0 0% 15%;
     --sidebar-ring: 0 0% 100%;
   }
 }
@@ -242,7 +243,7 @@
   box-shadow: 0 4px 12px hsl(var(--foreground) / 0.05);
 }
 
-/* ── Starfield Background ─────────────────────────────── */
+/* ── Starfield Background ─────────────���───────────────── */
 @keyframes starfield-drift {
   0%   { transform: translateY(0); }
   100% { transform: translateY(-2000px); }

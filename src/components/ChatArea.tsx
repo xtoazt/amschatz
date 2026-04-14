@@ -232,13 +232,13 @@ export function ChatArea({
         </div>
       )}
 
-      {/* Header */}
-      <header className="h-14 flex items-center px-4 shrink-0 bg-card/60 backdrop-blur-xl border-b border-border/30 shadow-[0_1px_6px_rgba(0,0,0,0.4)] sticky top-0 z-20 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/10 after:to-transparent">
+      {/* Header — IDE tab bar */}
+      <header className="h-9 flex items-center px-3 shrink-0 bg-secondary/50 border-b border-border sticky top-0 z-20">
         <button
           onClick={() => setMobileSidebarOpen(true)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors md:hidden"
+          className="w-6 h-6 flex items-center justify-center rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-colors md:hidden"
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-3.5 h-3.5" />
         </button>
         {isPasswordProtected && (
           <div className="flex items-center gap-1 text-muted-foreground">
@@ -249,11 +249,11 @@ export function ChatArea({
         <div className="flex-1 flex justify-center">
           {/* Room code display removed per user request */}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
-              <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-foreground transition-colors">
-                <ZoomIn className="w-4 h-4" />
+              <button className="w-6 h-6 flex items-center justify-center rounded-sm hover:bg-muted text-foreground transition-colors">
+                <ZoomIn className="w-3.5 h-3.5" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-3" side="bottom" align="end">
@@ -278,12 +278,12 @@ export function ChatArea({
               rotate: [0, -15, 15, -12, 12, -6, 6, -2, 2, 0],
             } : { rotate: 0 }}
             transition={{ duration: 0.6, ease: 'easeInOut' }}
-            className={`w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors ${notificationsEnabled ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`w-6 h-6 flex items-center justify-center rounded-sm hover:bg-muted transition-colors ${notificationsEnabled ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            {notificationsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+            {notificationsEnabled ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
           </motion.button>
-          <button onClick={onLeave} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] md:hidden">
-            <LogOut className="w-4 h-4" />
+          <button onClick={onLeave} className="w-6 h-6 flex items-center justify-center rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.95] md:hidden">
+            <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
       </header>
@@ -411,7 +411,7 @@ export function ChatArea({
             exit={{ opacity: 0, scale: 0.6, y: 20 }}
             transition={{ type: 'spring', stiffness: 500, damping: 25 }}
             onClick={() => scrollToBottom(true)}
-            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-12 h-12 rounded-full bg-background border border-foreground flex items-center justify-center text-foreground hover:bg-foreground hover:text-background transition-colors active:scale-[0.95] shadow-lg backdrop-blur-sm"
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-10 h-10 rounded-sm bg-card border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors active:scale-[0.95] shadow-lg"
             aria-label="Scroll to bottom"
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
@@ -483,7 +483,7 @@ export function ChatArea({
             />
           </div>
         )}
-        <div className="flex gap-1 items-center border border-white/10 focus-within:border-white/20 rounded-xl bg-black/60 backdrop-blur-md px-1.5 transition-colors duration-300">
+        <div className="flex gap-1 items-center border border-border focus-within:border-ring/50 rounded-sm bg-input px-1.5 transition-colors duration-200">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -510,8 +510,8 @@ export function ChatArea({
           <motion.button
             type="submit"
             disabled={!input.trim() || isInputDisabled}
-            className={`p-2.5 rounded-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center text-foreground ${
-              input.trim() ? 'bg-white/15 hover:bg-white/25' : 'bg-transparent'
+            className={`p-2 rounded-sm transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center ${
+              input.trim() ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'text-muted-foreground bg-transparent'
             }`}
             whileTap={{ scale: 0.9, rotate: -12 }}
           >
